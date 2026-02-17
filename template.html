@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>教育信息化新闻资讯</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .news-item {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .news-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .news-title a {
+            color: #2c3e50;
+            text-decoration: none;
+        }
+        .news-title a:hover {
+            color: #3498db;
+        }
+        .news-meta {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 15px;
+        }
+        .news-meta span {
+            margin-right: 15px;
+        }
+        .news-summary {
+            font-size: 16px;
+            color: #34495e;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        .news-link {
+            font-size: 14px;
+        }
+        .news-link a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .news-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>教育信息化新闻资讯</h1>
+        <!-- 新闻列表将在这里动态生成 -->
+        {% for news in news_list %}
+        <div class="news-item">
+            <div class="news-title"><a href="{{ news.url }}" target="_blank">{{ news.title }}</a></div>
+            <div class="news-meta">
+                <span>来源: {{ news.source }}</span>
+                <span>作者: {{ news.author }}</span>
+                <span>发布时间: {{ news.publish_time }}</span>
+            </div>
+            <div class="news-summary">{{ news.summary }}</div>
+            <div class="news-link"><a href="{{ news.url }}" target="_blank">查看原文</a></div>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>
