@@ -1,0 +1,10 @@
+selenium
+GeneralNewsExtractor
+requests
+beautifulsoup4
+lxml
+sqlite3
+webdriver-manager
+python-dotenv
+langchain
+openai
