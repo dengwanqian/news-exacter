@@ -1,1 +1,1 @@
-抽取部分行业新闻
+本项目用到了selenium和 GeneralNewsExtractor，抽取部分垂直行业新闻并进行展示。
