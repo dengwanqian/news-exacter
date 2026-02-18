@@ -51,6 +51,28 @@ class NewsDatabase:
         self.cursor.execute(sql)
         return self.cursor.fetchall()
     
+    def is_title_exists(self, title):
+        """检查标题是否已存在"""
+        try:
+            sql = "SELECT COUNT(*) FROM news WHERE title = ?"
+            self.cursor.execute(sql, (title,))
+            count = self.cursor.fetchone()[0]
+            return count > 0
+        except Exception as e:
+            print(f"检查标题是否存在失败: {e}")
+            return False
+    
+    def is_title_exists(self, title):
+        """检查标题是否已存在"""
+        try:
+            sql = "SELECT COUNT(*) FROM news WHERE title = ?"
+            self.cursor.execute(sql, (title,))
+            count = self.cursor.fetchone()[0]
+            return count > 0
+        except Exception as e:
+            print(f"检查标题是否存在失败: {e}")
+            return False
+    
     def close(self):
         if self.conn:
             self.conn.close()

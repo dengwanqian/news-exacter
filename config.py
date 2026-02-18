@@ -1,6 +1,10 @@
 # 信息来源URL列表
 NEWS_SOURCES = [
     {
+        "url":"https://ai-bot.cn/daily-ai-news/",  
+        "source":"教育部官网-新闻发布"
+    },
+    {
         "url":"http://www.moe.gov.cn/jyb_xwfb/gzdt_gzdt/index.html",  
         "source":"教育部官网-工作动态"
     },
@@ -16,10 +20,7 @@ NEWS_SOURCES = [
         "url":"https://www.edu.cn/xxh/tpxw/index.shtml",  
         "source":"中国教育和科研计算机网滚动新闻"
     },
-        {
-        "url":"https://www.edu.cn/xxh/tpxw/index_1.shtml",  
-        "source":"中国教育和科研计算机网滚动新闻"
-    },
+
     {
         "url":"http://www.chinaedunew.cn/xinwen.html",  
         "source":"中国教育新闻网新闻频道"
@@ -27,7 +28,13 @@ NEWS_SOURCES = [
     {
         "url":"http://www.chinaedunew.cn/jiaoyu.html", 
         "source":"中国教育新闻网教育频道"
+    },
+    {
+        "url":"https://ai-bot.cn/daily-ai-news/", 
+        "source":"Ai机器人-每日AI新闻"
     }
+
+
 ]
 
 # 数据库配置
