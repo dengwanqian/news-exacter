@@ -1,5 +1,7 @@
+import datetime
 import json
 import requests
+from requests.compat import urlencode
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -61,7 +63,90 @@ class NewsExtractor:
         driver.set_page_load_timeout(self.timeout)
         driver.implicitly_wait(10)
         return driver
-    
+    def get_article_links(self, fakeid="Mzg4MTAwMzgxNw==", begin=0,count=10,url="https://mp.weixin.qq.com/cgi-bin/appmsgpublish"):
+        #url = "https://mp.weixin.qq.com/cgi-bin/appmsgpublish"
+        
+        params = {
+            "sub":"list",
+            "search_field":"null",
+            "begin": begin,
+            "count": count,
+            "query":"",
+            "fakeid":fakeid,
+            "type":"101_1",
+            "free_publish_type":"1",
+            "sub_action":"list_ex",
+            "fingerprint":"3a9f8e1c6410972e12c8e5b772cf93a7",
+            "token":"1866058424",
+            "lang":"zh_CN",
+            "f":"json",
+            "ajax":"1"
+        }
+
+        # 将参数编码为查询字符串
+        query_string = urlencode(params)
+
+        # 拼接完整 URL
+        full_url = f"{url}?{query_string}"
+        # 或使用 urljoin（更安全，处理基础 URL 末尾是否有 / 的情况）
+        # full_url = urljoin(base_url, f"?{query_string}")
+
+        driver = webdriver.Chrome()
+
+
+        driver.get(url)
+        driver.implicitly_wait(2)
+
+
+        #appmsglist_action_3698171553=card; ua_id=gGciSNABsRG3YVjYAAAAAP3VzldzkVQpLuyW5trVEZU=; wxuin=72840348896290; uuid=4d3c5feb55ea2b4c90a821287983a73d; rand_info=CAESID8/RU7Foytt34JajYXqQXkh2TiDI2WYeNcGTrSIW7/u; slave_bizuin=3698171553; data_bizuin=3698171553; bizuin=3698171553; data_ticket=wnEcaadCvKx1Xwg7l9+f8RxW+San/bUrWRmQeL8/UkcIflSehdJ1UNs2yLLfC6D4; slave_sid=bGMwaGowX3lvRmFId00zdkRCVkJYX2dqWTVIdlppSDlWTkNyam1qTHB4bEFveWd5QmFqZ1JKZDN5c3BEbFJKMENBNTl4clo0OVA5M3pCalY2TjZvdEVoTTI2QWptdnlhRnIwUHhpWHdHUjdxRk9xY05BRFk5OHRxZ25XWExhalVxN1NQVXNOZjdXMVRabmwz; slave_user=gh_1b1c72a05bb7; xid=b5a03c8350c4cac45efc17326f041944; mm_lang=zh_CN; cert=etdJX8xT3oYOdzfDjW5AoMu3Nqu7zHaI; _clck=3698171553|1|g45|0; _clsk=amul0v|1772848679339|2|1|mp.weixin.qq.com/weheat-agent/payload/record
+
+        driver.add_cookie({"name": "appmsglist_action_3698171553", "value": "card"})
+        driver.add_cookie({"name": "ua_id", "value": "gGciSNABsRG3YVjYAAAAAP3VzldzkVQpLuyW5trVEZU="})
+        driver.add_cookie({"name": "wxuin", "value": "72840348896290"})
+        driver.add_cookie({"name": "uuid", "value": "4d3c5feb55ea2b4c90a821287983a73d"})
+        driver.add_cookie({"name": "rand_info", "value": "CAESID8/RU7Foytt34JajYXqQXkh2TiDI2WYeNcGTrSIW7/u"})
+        driver.add_cookie({"name": "slave_bizuin", "value": "3698171553"})
+        driver.add_cookie({"name": "data_bizuin", "value": "3698171553"})
+        driver.add_cookie({"name": "bizuin", "value": "3698171553"})
+        driver.add_cookie({"name": "data_ticket", "value": "wnEcaadCvKx1Xwg7l9+f8RxW+San/bUrWRmQeL8/UkcIflSehdJ1UNs2yLLfC6D4"})
+        driver.add_cookie({"name": "slave_sid", "value": "bGMwaGowX3lvRmFId00zdkRCVkJYX2dqWTVIdlppSDlWTkNyam1qTHB4bEFveWd5QmFqZ1JKZDN5c3BEbFJKMENBNTl4clo0OVA5M3pCalY2TjZvdEVoTTI2QWptdnlhRnIwUHhpWHdHUjdxRk9xY05BRFk5OHRxZ25XWExhalVxN1NQVXNOZjdXMVRabmwz"})
+        driver.add_cookie({"name": "slave_user", "value": "gh_1b1c72a05bb7"})
+        driver.add_cookie({"name": "xid", "value": "b5a03c8350c4cac45efc17326f041944"})
+        driver.add_cookie({"name": "mm_lang", "value": "zh_CN"})
+        driver.add_cookie({"name": "cert", "value": "etdJX8xT3oYOdzfDjW5AoMu3Nqu7zHaI"})
+        driver.add_cookie({"name": "_clck", "value": "3698171553|1|g45|0"})
+        driver.add_cookie({"name": "_clsk", "value": "amul0v|1772848679339|2|1|mp.weixin.qq.com/weheat-agent/payload/record"})  
+        driver.get(full_url)
+
+        # 等待页面加载完成
+        driver.implicitly_wait(5)
+
+        # 获取页面源码
+        page_source = driver.page_source
+
+        soup = BeautifulSoup(page_source, "html.parser")
+                
+        # pre标签
+        moe_list_pre = soup.find("pre")
+        if moe_list_pre:
+            print("pre标签")
+            page_source = moe_list_pre.text
+        
+        data_json = json.loads(page_source)
+        publish_list = json.loads(data_json["publish_page"])["publish_list"]
+        links = []
+        for publish_item in publish_list:
+            publish_info=json.loads(publish_item["publish_info"])
+            #print(publish_info)
+            one_item = publish_info["appmsgex"][0]
+            title,link, update_time = one_item["title"],one_item["link"],one_item["update_time"]
+            #将日期由长整型转换为日期时间对象
+            pub_time=datetime.datetime.fromtimestamp(int(update_time))
+            print(title,link,pub_time)
+            links.append(link)
+
+        return links
+
     def get_rendered_page(self, url):
         try:
             print(f"正在获取页面: {url}")
@@ -370,6 +455,66 @@ class NewsExtractor:
                 print("未找到class='news-item'的div标签")
                 return None
         
+        # 5. 针对beijing.gov.cn网站的特殊处理 - 只提取class="listBox"的div下的链接
+        elif "beijing.gov.cn" in base_url:
+            print("\n--- beijing.gov.cn网站特殊处理 ---")
+            soup = BeautifulSoup(page_source, "html.parser")
+            
+            # 查找class="listBox"的div标签
+            listbox_ul = soup.find("ul", class_="list")
+            
+            if listbox_ul:
+                print("找到class='list'的ul标签")
+                
+                # 提取该div下所有a标签的href属性
+                a_tags = listbox_ul.find_all("a", href=True)
+                print(f"在list ul下找到 {len(a_tags)} 个a标签")
+                
+                for a_tag in a_tags:
+                    href = a_tag["href"]
+                    if href and href not in ["#", "javascript:"]:
+                        print(f"找到链接: {href}")
+                        
+                        # 构建完整URL
+                        if href.startswith("http"):
+                            full_url = href
+                        else:
+                            # 确保base_url格式正确
+                            if base_url.endswith("/index.html"):
+                                base_url = base_url[:-11]
+                            
+                            # 确保base_url以/结尾
+                            if not base_url.endswith("/"):
+                                base_url += "/"
+                            
+                            # 处理各种相对路径
+                            if href.startswith("/"):
+                                # 根相对路径
+                                full_url = base_url.split("://")[0] + "://" + base_url.split("://")[1].split("/")[0] + href
+                            elif href.startswith("../"):
+                                # 父目录相对路径
+                                full_url = base_url + href
+                            elif href.startswith("./"):
+                                # 当前目录相对路径
+                                full_url = base_url + href[2:]
+                            else:
+                                # 直接以文件名开头的相对路径
+                                full_url = base_url + href
+                        
+                        links.append(full_url)
+                
+                #针对微信公众号的特殊处理
+
+
+                if links:
+                    # 去重
+                    unique_links = list(set(links))
+                    print(f"\nbeijing.gov.cn网站提取到 {len(unique_links)} 条链接")
+                    return unique_links
+            else:
+                print("未找到class='listBox'的div标签")
+                return None
+        
         # 2. 通用链接提取逻辑（适用于其他网站或教育部网站未找到moe-list的情况）
         href_pattern = re.compile(r'href=["\'](.*?)["\']')
         all_hrefs = href_pattern.findall(page_source)
@@ -386,6 +531,8 @@ class NewsExtractor:
                 # 处理各种相对路径
                 if base_url.endswith("/index.html"):
                     base_url = base_url[:-11]
+                elif base_url.endswith("/index_1.htm"):
+                    base_url = base_url[:-13]
                 
                 # 确保base_url以/结尾，便于拼接相对路径
                 if not base_url.endswith("/"):
@@ -513,19 +660,17 @@ class NewsExtractor:
                 "Accept": "application/json; charset=utf-8",
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
             }
-            params = {"access_token": access_token}
+            params = {"access_token": access_token,
+                      "charset": "UTF-8"}
             
             # 准备请求参数
             payload = {
-                "content": text[:2000],  # 限制内容长度为2000字
+                "content": text[:3000],  # 限制内容长度为4000字
                 "max_summary_len": 300  # 摘要最大长度
             }
             
-            # 手动序列化JSON，确保编码正确
-            json_payload = json.dumps(payload, ensure_ascii=False).encode('utf-8')
-            
-            # 发送请求
-            response = requests.post(url, headers=headers, params=params, data=json_payload, timeout=15)
+            # 发送请求，使用json参数自动处理编码
+            response = requests.post(url, headers=headers, params=params, json=payload, timeout=15)
             
             # 强制设置响应编码为UTF-8
             response.encoding = 'utf-8'
@@ -576,3 +721,152 @@ class NewsExtractor:
     def close(self):
         if self.driver:
             self.driver.quit()
+    
+    def classify_content(self, title, content):
+        """使用百度智能云NLP分类API对内容进行分类"""
+        if not title and not content:
+            return "教育信息化", "其他"
+        
+        try:
+            # 检查API密钥是否设置
+            if not hasattr(self, 'api_key') or not self.api_key:
+                raise ValueError("API密钥未设置")
+            
+            # 使用百度智能云NLP分类API
+            API_KEY = self.api_key
+            SECRET_KEY = self.secret_key
+        
+            # 获取 access token
+            print("正在获取access_token...")
+            auth_url = f"https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id={API_KEY}&client_secret={SECRET_KEY}"
+            response = requests.get(auth_url, timeout=10)
+            
+            # 强制设置响应编码为UTF-8
+            response.encoding = 'utf-8'
+            
+            if response.status_code != 200:
+                raise Exception(f"获取access_token失败，状态码: {response.status_code}, 响应: {response.text}")
+                
+            # 手动解析JSON，确保编码正确
+            import json
+            auth_result = json.loads(response.text)
+            if "error" in auth_result:
+                raise Exception(f"获取access_token失败: {auth_result['error']}")
+                
+            access_token = auth_result.get("access_token")
+
+            if not access_token:
+                raise ValueError("获取access_token失败")
+            
+            print("获取access_token成功")
+
+            # 调用百度智能云NLP分类API - 文本分类
+            print("正在调用百度智能云NLP分类API...")
+            url = "https://aip.baidubce.com/rpc/2.0/nlp/v1/topic"
+            
+            # 设置请求头
+            headers = {
+                "Content-Type": "application/json; charset=utf-8",
+                "Accept": "application/json; charset=utf-8",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+
+            #params = {"access_token": access_token}
+            params = {"access_token": access_token,
+                      "charset": "UTF-8"}
+            
+            # 准备请求参数，根据官方文档要求
+            payload = {
+                "title": title[:50],  # 标题限制500字
+                "content": content[:500]  # 内容限制2000字
+            }
+
+            
+            
+            # 打印请求信息，便于调试
+            print(f"请求URL: {url}")
+            print(f"请求参数: {params}")
+            print(f"请求头: {headers}")
+            print(f"请求数据 - 标题: {title[:40]}...")
+            print(f"请求数据 - 内容: {content[:100]}...")
+            
+            # 发送请求，使用json参数自动处理编码
+            response = requests.post(url, headers=headers, params=params, json=payload, timeout=15)
+            
+            # 打印响应信息，便于调试
+            print(f"响应状态码: {response.status_code}")
+            print(f"响应头: {dict(response.headers)}")
+            
+
+            
+            # 根据检测到的编码解码
+            try:
+                response_text = response.content.decode('utf-8')
+            except:
+                # 如果解码失败，尝试使用utf-8
+                response_text = response.content.decode('utf-8', errors='replace')
+            
+            print(f"解码后的响应内容: {response_text}")
+            
+            if response.status_code != 200:
+                raise Exception(f"API调用失败，状态码: {response.status_code}, 响应: {response_text}")
+            
+            # 手动解析JSON，确保编码正确
+            result = json.loads(response_text)
+            print(f"API返回结果: {result}")
+            
+            if "error_code" in result:
+                raise Exception(f"API返回错误: {result['error_msg']} (错误码: {result['error_code']})")
+                
+            # 解析分类结果
+            main_category = "教育信息化"
+            subcategories = []
+            
+            if "item" in result:
+                item = result["item"]
+                if "lv1_tag_list" in item:
+                    # 一级分类
+                    for tag in item["lv1_tag_list"]:
+                        if "tag" in tag:
+                            # 确保字符串编码正确
+                            tag_name = tag["tag"]
+                            if isinstance(tag_name, bytes):
+                                tag_name = tag_name.decode('utf-8')
+                            main_category = tag_name
+                            break
+                
+                if "lv2_tag_list" in item:
+                    # 二级分类
+                    for tag in item["lv2_tag_list"]:
+                        if "tag" in tag:
+                            # 确保字符串编码正确
+                            tag_name = tag["tag"]
+                            if isinstance(tag_name, bytes):
+                                tag_name = tag_name.decode('utf-8')
+                            subcategories.append(tag_name)
+                
+                if "lv3_tag_list" in item:
+                    # 三级分类
+                    for tag in item["lv3_tag_list"]:
+                        if "tag" in tag:
+                            # 确保字符串编码正确
+                            tag_name = tag["tag"]
+                            if isinstance(tag_name, bytes):
+                                tag_name = tag_name.decode('utf-8')
+                            subcategories.append(tag_name)
+            
+            # 处理子分类
+            subcategory_str = ", ".join(subcategories) if subcategories else ""
+            
+            # 确保最终结果是正确编码的字符串
+            main_category = str(main_category)
+            subcategory_str = str(subcategory_str)
+            
+            
+            print(f"分类结果 - 主分类: {main_category}, 子分类: {subcategory_str}")
+            return main_category, subcategory_str
+            
+        except Exception as e:
+            print(f"百度智能云NLP分类API调用失败: {e}")
+            # 回退到默认分类
+            return "其他", "其他"

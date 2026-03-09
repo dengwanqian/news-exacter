@@ -8,14 +8,11 @@ import datetime
 db = NewsDatabase("news.db")
 
 # 获取所有新闻
-news_list = db.get_all_news(limit=200)
+news_list = db.get_all_news_with_undecided(limit=200)
 news_list = sorted(news_list, key=lambda x: x[10], reverse=False)
 
 # 过滤近两周内的新闻
 two_weeks_ago = datetime.datetime.now() - datetime.timedelta(weeks=2)
-one_weeks_ago = datetime.datetime.now() - datetime.timedelta(weeks=1)
-update_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-
 filtered_news = []
 
 for news in news_list:
@@ -24,7 +21,7 @@ for news in news_list:
         try:
             # 尝试解析发布时间
             publish_time = datetime.datetime.strptime(publish_time_str[:10], "%Y-%m-%d")
-            if publish_time >= one_weeks_ago:
+            if publish_time >= two_weeks_ago:
                 filtered_news.append(news)
         except:
             # 如果发布时间解析失败，跳过时间检查
@@ -62,10 +59,10 @@ with open("template.html", "r", encoding="utf-8") as f:
 
 # 渲染模板
 template = Template(template_content)
-html_content = template.render(news_list=news_data, update_time=update_time)
+html_content = template.render(news_list=news_data)
 
 # 保存生成的HTML
-output_file = f"教育信息化新闻一周资讯_{datetime.datetime.now().strftime('%Y%m%d')}.html"
+output_file = f"教育信息化新闻资讯(两周内)_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.html"
 with open(output_file, "w", encoding="utf-8") as f:
     f.write(html_content)
 

@@ -1,8 +1,9 @@
 # 信息来源URL列表
 NEWS_SOURCES = [
+    
     {
         "url":"https://ai-bot.cn/daily-ai-news/",  
-        "source":"教育部官网-新闻发布"
+        "source":"Ai机器人-每日AI新闻"
     },
     {
         "url":"http://www.moe.gov.cn/jyb_xwfb/gzdt_gzdt/index.html",  
@@ -13,6 +14,19 @@ NEWS_SOURCES = [
         "source":"教育部官网-政策解读"
     },
     {
+        "url":"https://www.beijing.gov.cn/ywdt/yaowen/index.html",  
+        "source":"北京市政府官网-北京要闻"
+    },
+    {
+        "url":"https://www.beijing.gov.cn/ywdt/yaowen/index_1.html",  
+        "source":"北京市政府官网-北京要闻"
+    },
+    {
+        "url":"http://www.moe.gov.cn/jyb_xwfb/s271/index.html",  
+        "source":"教育部官网-政策解读"
+    },
+
+    {
         "url":"https://www.toutiao.com/c/user/token/CiiKeMCqF1WLUzJbc2sPgIUpWP07ThNbYWzsvUzlogkKr3Qyd79IQMY1GkkKPAAAAAAAAAAAAABQEt9BK3U1ycxEIwdxTR4LEcJSlW0QbN8jfMXnDg7O0EF07XaarJQkdm8bvWmTz2ehFxCp04kOGMPFg-oEIgEDng1CJQ==/?tab=article",
         "source":"今日头条高校之窗"
      },
@@ -20,20 +34,22 @@ NEWS_SOURCES = [
         "url":"https://www.edu.cn/xxh/tpxw/index.shtml",  
         "source":"中国教育和科研计算机网滚动新闻"
     },
-
-    {
-        "url":"http://www.chinaedunew.cn/xinwen.html",  
-        "source":"中国教育新闻网新闻频道"
-    },
     {
         "url":"http://www.chinaedunew.cn/jiaoyu.html", 
         "source":"中国教育新闻网教育频道"
     },
     {
-        "url":"https://ai-bot.cn/daily-ai-news/", 
-        "source":"Ai机器人-每日AI新闻"
+        "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=Mzg2MTc1NzAxNQ==",
+        "source":"高校信息化名家汇"
+    },
+    {
+        "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=MzI2NzQ2NzE1NQ==",
+        "source":"教育信息化100人"
+    },
+    {
+        "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=Mzg4MTAwMzgxNw==",
+        "source":"教育信息化资讯"
     }
-
 
 ]
 
@@ -47,4 +63,4 @@ SELENIUM_TIMEOUT = 30
 EXTRACT_TIMEOUT = 60
 
 #筛选词
-FILTER_KEYWORDS = ["信息化","AI", "数字化", "网络安全", "教学改革","智慧教室", "人工智能", "智能体","信息技术","教育技术"]
+FILTER_KEYWORDS = ["信息化","AI", "教育数字化", "网络安全", "智慧课堂","智慧教室", "人工智能", "智能体","信息技术","教育技术","赋能"]
