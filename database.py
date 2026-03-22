@@ -1,5 +1,6 @@
 import sqlite3
 from datetime import datetime
+from logger import info, debug, error, warning
 
 class NewsDatabase:
     def __init__(self, db_path):
@@ -47,7 +48,7 @@ class NewsDatabase:
             self.conn.commit()
             return True
         except Exception as e:
-            print(f"插入新闻失败: {e}")
+            error(f"插入新闻失败: {e}", "database")
             return False
     
     def get_all_news(self, limit=None):
@@ -72,10 +73,19 @@ class NewsDatabase:
             count = self.cursor.fetchone()[0]
             return count > 0
         except Exception as e:
-            print(f"检查标题是否存在失败: {e}")
+            error(f"检查标题是否存在失败: {e}", "database")
             return False
     
-
+    def update_news_summary(self, id, summary):
+        try:
+            sql = "UPDATE news SET summary = ? WHERE id = ?"
+            self.cursor.execute(sql, (summary, id))
+            self.conn.commit()
+            return True
+        except Exception as e:
+            error(f"更新新闻摘要失败: {e}", "database")
+            return False
+    
     
     def close(self):
         if self.conn:

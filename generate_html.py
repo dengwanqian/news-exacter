@@ -3,6 +3,7 @@ from jinja2 import Template
 import datetime
 
 import datetime
+from logger import info, debug, error, warning
 
 # 连接数据库
 db = NewsDatabase("news.db")
@@ -33,7 +34,7 @@ for news in news_list:
         # 如果没有发布时间，跳过时间检查
         filtered_news.append(news)
 
-print(f"总共 {len(news_list)} 条新闻，过滤后保留 {len(filtered_news)} 条近两周内的新闻")
+info(f"总共 {len(news_list)} 条新闻，过滤后保留 {len(filtered_news)} 条近两周内的新闻")
 news_list = filtered_news
 
 # 关闭数据库连接
@@ -65,8 +66,8 @@ template = Template(template_content)
 html_content = template.render(news_list=news_data, update_time=update_time)
 
 # 保存生成的HTML
-output_file = f"教育信息化新闻一周资讯_{datetime.datetime.now().strftime('%Y%m%d')}.html"
+output_file = f"教育信息化一周资讯_{datetime.datetime.now().strftime('%Y%m%d')}.html"
 with open(output_file, "w", encoding="utf-8") as f:
     f.write(html_content)
 
-print(f"HTML页面已生成: {output_file}")
+info(f"HTML页面已生成: {output_file}")

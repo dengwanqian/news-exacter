@@ -1,6 +1,33 @@
 # 信息来源URL列表
 NEWS_SOURCES = [
-    
+    {
+        "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=Mzg2MTc1NzAxNQ==",
+        "source":"高校信息化名家汇"
+    },
+    {
+        "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=MzI2NzQ2NzE1NQ==",
+        "source":"教育信息化100人"
+    },
+    {
+        "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=Mzg4MTAwMzgxNw==",
+        "source":"教育信息化资讯"
+    },
+    {
+        "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=MjM5NjY3NjEyMA==",
+        "source":"中国青年报"
+    },
+    {
+        "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=MjM5NzM1MDgyMw==",
+        "source":"中国教育协会"
+    },
+    {
+        "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=MjM5MzMyOTgzNQ==",
+        "source":"中国教育技术协会"
+    },
+    {
+        "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=MzA4NTk5ODkyMw==",
+        "source":"中国高等教育协会"
+    },
     {
         "url":"https://ai-bot.cn/daily-ai-news/",  
         "source":"Ai机器人-每日AI新闻"
@@ -18,39 +45,13 @@ NEWS_SOURCES = [
         "source":"北京市政府官网-北京要闻"
     },
     {
-        "url":"https://www.beijing.gov.cn/ywdt/yaowen/index_1.html",  
-        "source":"北京市政府官网-北京要闻"
-    },
-    {
-        "url":"http://www.moe.gov.cn/jyb_xwfb/s271/index.html",  
-        "source":"教育部官网-政策解读"
-    },
-
-    {
         "url":"https://www.toutiao.com/c/user/token/CiiKeMCqF1WLUzJbc2sPgIUpWP07ThNbYWzsvUzlogkKr3Qyd79IQMY1GkkKPAAAAAAAAAAAAABQEt9BK3U1ycxEIwdxTR4LEcJSlW0QbN8jfMXnDg7O0EF07XaarJQkdm8bvWmTz2ehFxCp04kOGMPFg-oEIgEDng1CJQ==/?tab=article",
         "source":"今日头条高校之窗"
      },
     {
         "url":"https://www.edu.cn/xxh/tpxw/index.shtml",  
         "source":"中国教育和科研计算机网滚动新闻"
-    },
-    {
-        "url":"http://www.chinaedunew.cn/jiaoyu.html", 
-        "source":"中国教育新闻网教育频道"
-    },
-    {
-        "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=Mzg2MTc1NzAxNQ==",
-        "source":"高校信息化名家汇"
-    },
-    {
-        "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=MzI2NzQ2NzE1NQ==",
-        "source":"教育信息化100人"
-    },
-    {
-        "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=Mzg4MTAwMzgxNw==",
-        "source":"教育信息化资讯"
     }
-
 ]
 
 # 数据库配置

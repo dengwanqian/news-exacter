@@ -4,6 +4,7 @@ from database import NewsDatabase
 import time
 
 import datetime
+from logger import info, debug, error, warning
 
 
 
@@ -38,9 +39,11 @@ def main():
                 print(f"从文件加载缓存，当前缓存大小: {len(link_cache)}")
         except Exception as e:
             print(f"加载缓存失败: {e}")
+            error(f"加载缓存失败: {e}", "cache")
             link_cache = OrderedDict()
     else:
         print("缓存文件不存在，创建新缓存")
+        info("缓存文件不存在，创建新缓存", "cache")
     
     try:
         # 遍历所有信息来源
@@ -48,13 +51,18 @@ def main():
             source_url = source_item["url"]
             source_name = source_item["source"]
             print(f"处理信息来源: {source_name} ({source_url})")
+            info(f"处理信息来源: {source_name} ({source_url})")
+
             news_links=[]
             if source_url.startswith("https://mp.weixin.qq.com/cgi-bin/appmsgpublish"):
                 # 从URL中提取fakeid
                 fakeid = source_url.split("fakeid=")[1]
 
                 # 调用get_articles获取文章链接
-                news_links = extractor.get_article_links(fakeid=fakeid, begin=0, count=10)
+                count=5
+                if source_name == "中国青年报":
+                    count=10
+                news_links = extractor.get_article_links(fakeid=fakeid, begin=0, count=count)
             else:
                 # 获取渲染后的页面
                 page_source = extractor.get_rendered_page(source_url)
@@ -64,10 +72,13 @@ def main():
                 # 提取新闻链接
                 news_links = extractor.extract_news_links(page_source, source_url)
             print(f"提取到 {len(news_links)} 条新闻链接")
+
             
             # 遍历新闻链接，提取内容
             for link in news_links[:20]:  # 限制每次处理的新闻数量
                 print(f"处理新闻: {link}")
+
+
                 
                 # 检查链接是否在缓存中
                 if link in link_cache:
@@ -135,9 +146,7 @@ def main():
                 # 使用百度智能云NLP分类API获取分类
                 # 传递标题和内容作为参数
                 category, subcategory = extractor.classify_content(news_data["title"], summary)
-                
-                print(f"分类结果 - 分类: {category}, 子分类: {subcategory}")
-                
+                               
                 # 保存到数据库，使用配置中的source名称
                 success = db.insert_news(
                     title=news_data["title"],
@@ -153,15 +162,20 @@ def main():
                 
                 if success:
                     print(f"成功保存新闻: {news_data['title']}")
+                    info(f"成功保存新闻: {news_data['title']}", "database")
                 else:
                     print(f"新闻已存在或保存失败: {news_data['title']}")
+                    warning(f"新闻已存在或保存失败: {news_data['title']}", "database")
                 
                 time.sleep(1)  # 避免请求过快
         
     
     except Exception as e:
         print(f"程序执行出错: {e}")
-        e.print_exc()
+        import traceback
+        traceback.print_exc()
+        error(f"程序执行出错: {e}")
+        error(traceback.format_exc())
         
     finally:
         # 保存缓存到文件
@@ -172,12 +186,16 @@ def main():
             print(f"缓存已保存到文件，当前缓存大小: {len(link_cache)}")
         except Exception as e:
             print(f"保存缓存失败: {e}")
+            error(f"保存缓存失败: {e}", "cache")
         # 关闭资源
         extractor.close()
         db.close()
         print("新闻筛选完毕。")
+        info("新闻筛选完毕。")
+
 
     print("现在开始生成最终分类...")
+    info("现在开始生成最终分类...", "classification")
     import classify_existing_news 
     classify_existing_news.main()
 

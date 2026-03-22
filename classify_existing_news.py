@@ -8,6 +8,7 @@ import sqlite3
 import requests
 import json
 from datetime import datetime
+from logger import info, debug, error, warning
 
 
 class NewsDatabase:
@@ -43,7 +44,7 @@ class NewsDatabase:
             self.conn.commit()
             return True
         except Exception as e:
-            print(f"更新分类失败: {e}")
+            error(f"更新分类失败: {e}", "database")
             return False
     def update_final_category(self, news_id, final_category):
         """更新新闻的最终分类信息"""
@@ -53,7 +54,7 @@ class NewsDatabase:
             self.conn.commit()
             return True
         except Exception as e:
-            print(f"更新最终分类失败: {e}")
+            error(f"更新最终分类失败: {e}", "database")
             return False
     
     def close(self):
@@ -85,7 +86,7 @@ class CategoryClassifier:
                 
             return access_token
         except Exception as e:
-            print(f"获取access_token失败: {e}")
+            error(f"获取access_token失败: {e}", "classification")
             return None
     
     def classify(self, title, content):
@@ -100,7 +101,7 @@ class CategoryClassifier:
                 raise ValueError("获取access_token失败")
             
             # 调用百度智能云NLP分类API - 文本分类
-            print("正在调用百度智能云NLP分类API...")
+            debug("正在调用百度智能云NLP分类API...", "classification")
             url = "https://aip.baidubce.com/rpc/2.0/nlp/v1/topic"
             
             # 设置请求头
@@ -163,7 +164,7 @@ class CategoryClassifier:
             return main_category, subcategory_str
             
         except Exception as e:
-            print(f"分类失败: {e}")
+            error(f"分类失败: {e}", "classification")
             return "其他", "其他"
     def final_classify(self, title, content, category, subcategory, source, author):
         """根据标题、内容、分类、子分类、来源和作者进行最终分类"""
@@ -178,7 +179,7 @@ class CategoryClassifier:
         elif source == "中国教育和科研计算机网滚动新闻":
             final_category = "1.行业新闻"
             #如果category等于教育且subcategory包含大学
-            if any(keyword in content for keyword in ["本文","主任谈","观点","专家","哪些","？"]):
+            if any(keyword in content for keyword in ["本文","主任谈","观点","专家","哪些","学术","讲座"]):
                 final_category = "2.专家视点"
             elif  category == "教育" and subcategory.find("大学") != -1:
                 final_category = "3.高校动态"
@@ -210,7 +211,27 @@ class CategoryClassifier:
                 final_category = "2.专家视点"
         elif source == "教育信息化资讯":
                 final_category = "1.行业新闻"
+                if any(keyword in title for keyword in ["时评","聚焦","建议","主任谈","专家","文章"]):
+                    final_category = "2.专家视点"
+        elif source == "中国教育协会":
+                final_category = "1.行业新闻"
+                if any(keyword in title for keyword in ["时评","聚焦","建议","主任谈","专家","文章"]):
+                    final_category = "2.专家视点"
 
+        elif source == "中国高等教育协会":
+                final_category = "1.行业新闻"
+                if any(keyword in title for keyword in ["时评","聚焦","建议","主任谈","专家"]):
+                    final_category = "2.专家视点"
+                elif  category == "教育" and subcategory.find("大学") != -1:
+                    final_category = "3.高校动态"
+                elif category == "科技" :
+                    final_category = "4.科技前沿"
+        elif source == "中国教育技术协会":
+                final_category = "1.行业新闻"
+                if any(keyword in title for keyword in ["聚焦","建议","主任谈","专家"]):
+                    final_category = "2.专家视点"
+                elif  category == "科技" or subcategory.find("科技") != -1:
+                    final_category = "4.科技前沿"
         return final_category
 
 def main():
@@ -227,7 +248,7 @@ def main():
     
     # 检查API密钥是否设置
     if not API_KEY or not SECRET_KEY:
-        print("错误：API密钥未设置，请在.env文件中设置BAIDU_API_KEY和BAIDU_SECRET_KEY")
+        error("错误：API密钥未设置，请在.env文件中设置BAIDU_API_KEY和BAIDU_SECRET_KEY")
         return
     
     # 连接数据库
@@ -238,23 +259,25 @@ def main():
     
     # 获取需要分类的新闻
     news_list = db.get_news_without_category()
-    print(f"找到 {len(news_list)} 条需要分类的新闻")
+    info(f"找到 {len(news_list)} 条需要分类的新闻", "classification")
+
     
     # 处理每条新闻
     for news in news_list:
         news_id, title, summary, source, author = news
-        print(f"\n处理新闻 ID: {news_id}, 标题: {title[:50]}...")
+        debug(f"处理新闻 ID: {news_id}, 标题: {title[:50]}...", "classification")
         
         # 分类
         category, subcategory = classifier.classify(title, summary)
-        print(f"分类结果: 分类={category}, 子分类={subcategory}")
+        info(f"分类结果: 分类={category}, 子分类={subcategory}", "classification")
         
         # 更新数据库
         success = db.update_category(news_id, category, subcategory)
         if success:
-            print(f"更新分类成功")
+            #info(f"更新分类成功:"+title, "database")
+            pass
         else:
-            print(f"更新分类失败")
+            error(f"更新分类失败:{title}", "database")
     
 
     news_list = db.get_news_without_final_category()
@@ -266,14 +289,14 @@ def main():
         # 更新数据库
         success = db.update_final_category(news_id, final_category)
         if success:
-            print(f"更新分类成功")
+            info(f"更新分类成功:{title}:{final_category}", "database")
         else:
-            print(f"更新分类失败")
+            error(f"更新分类失败:{title}:{final_category}", "database")
 
-    print(f"找到 {len(news_list)} 条需要分类的新闻")
+
     # 关闭数据库连接
     db.close()
-    print("\n分类完成")
+    info("分类完成", "classification")
 
 if __name__ == "__main__":
     main()
