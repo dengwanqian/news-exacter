@@ -1,5 +1,6 @@
 import datetime
 import json
+from matplotlib.pylab import f
 from openai import OpenAI
 import requests
 from requests.compat import urlencode
@@ -52,8 +53,9 @@ class NewsExtractor:
         chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
         chrome_options.add_experimental_option("useAutomationExtension", False)
         
-        # 获取Chrome驱动路径
-        driver_path = ChromeDriverManager().install()
+        # 直接指定驱动路径，避免网络下载
+        # 请根据实际情况修改为您本地的Chrome驱动路径
+        driver_path = "./chromedriver.exe"
         
         try:
             # 尝试Selenium 4.x的方式
@@ -165,11 +167,13 @@ class NewsExtractor:
         for publish_item in publish_list:
             publish_info=json.loads(publish_item["publish_info"])
             #print(publish_info)
-            one_item = publish_info["appmsgex"][0]
-            title,link, update_time = one_item["title"],one_item["link"],one_item["update_time"]
-            #将日期由长整型转换为日期时间对象
-            pub_time=datetime.datetime.fromtimestamp(int(update_time))
-            links.append(link)
+            
+            for i in range(len(publish_info["appmsgex"])):
+                one_item = publish_info["appmsgex"][i]
+                title,link, update_time = one_item["title"],one_item["link"],one_item["update_time"]
+                #将日期由长整型转换为日期时间对象
+                pub_time=datetime.datetime.fromtimestamp(int(update_time))
+                links.append(link)
 
         return links
 
@@ -320,8 +324,8 @@ class NewsExtractor:
 
         
         # 3. 针对edu.cn网站的特殊处理 - 只提取class="section2ContentRightTitle"的div下的链接
-        elif "edu.cn" in base_url:
-            info("edu.cn网站特殊处理", "extract")
+        elif "www.edu.cn" in base_url:
+            info("www.edu.cn网站特殊处理", "extract")
 
             soup = BeautifulSoup(page_source, "html.parser")
             
@@ -382,7 +386,7 @@ class NewsExtractor:
             soup = BeautifulSoup(page_source, "html.parser")
             
             # 查找所有class="news-item"的div标签
-            news_divs = soup.find_all("div", class_="news-item")
+            news_divs = soup.find_all("div", class_="news-list")
             
             if news_divs:
                 
@@ -428,8 +432,12 @@ class NewsExtractor:
                                     full_url = base_url + href
                             
                             links.append(full_url)
+                            print(full_url)
+                            processed_count += 1
+                            if processed_count >= max_items:
+                                break
                     
-                    processed_count += 1
+                    
                 
                 if links:
                     # 去重并只返回前10条
@@ -437,7 +445,7 @@ class NewsExtractor:
                     info(f"ai-bot.cn网站提取到 {len(unique_links)} 条链接", "extract")
                     return unique_links
             else:
-                warning("未找到class='news-item'的div标签", "extract")
+                warning("未找到class='news-list'的div标签", "extract")
                 return None
         
         # 5. 针对beijing.gov.cn网站的特殊处理 - 只提取class="listBox"的div下的链接
@@ -445,6 +453,7 @@ class NewsExtractor:
             info("beijing.gov.cn网站特殊处理", "extract")
             soup = BeautifulSoup(page_source, "html.parser")
             
+
             # 查找class="listBox"的div标签
             listbox_ul = soup.find("ul", class_="list")
             
@@ -493,7 +502,116 @@ class NewsExtractor:
             else:
                 warning("未找到class='listBox'的div标签", "extract")
                 return None
+        elif "news.bfsu.edu.cn" in base_url:
+            info("北京外国语大学网站特殊处理", "extract")
+            soup = BeautifulSoup(page_source, "html.parser")
+            
+            # 查找class="listBox"的div标签
+            listbox_div = soup.find("div", class_="page-list")
+            
+            if listbox_div:
+                
+                # 提取该div下所有a标签的href属性
+                a_tags = listbox_div.find_all("a", href=True)
+
+                for a_tag in a_tags:
+                    href = a_tag["href"]
+                    if href and href not in ["#", "javascript:"]:
+                        
+                        # 构建完整URL
+                        if href.startswith("http"):
+                            full_url = href
+                        else:
+                            # 确保base_url格式正确
+                            if base_url.endswith("/index.html"):
+                                base_url = base_url[:-11]
+                            
+                            # 确保base_url以/结尾
+                            if not base_url.endswith("/"):
+                                base_url += "/"
+                            
+                            # 处理各种相对路径
+                            if href.startswith("/"):
+                                # 根相对路径
+                                full_url = base_url.split("://")[0] + "://" + base_url.split("://")[1].split("/")[0] + href
+                            elif href.startswith("../"):
+                                # 父目录相对路径
+                                full_url = base_url + href
+                            elif href.startswith("./"):
+                                # 当前目录相对路径
+                                full_url = base_url + href[2:]
+                            else:
+                                # 直接以文件名开头的相对路径
+                                full_url = base_url + href
+                        
+                        links.append(full_url)
+                        if len(links) > 10:
+                            break
+                
+                if links:
+                    # 去重
+                    unique_links = list(set(links))
+                    info(f"北京外国语大学网站提取到 {len(unique_links)} 条链接", "extract")                
+                    return unique_links
+            else:                
+                warning("未找到class='page-list'的div标签", "extract")
+                return None   
         
+        elif "itc.bfsu.edu.cn" in base_url:
+            info("北京外国语大学-信息中心网站特殊处理", "extract")
+            soup = BeautifulSoup(page_source, "html.parser")
+            
+            # 查找class="listBox"的div标签
+            listbox_ul = soup.find("ul", class_="m-listb2")
+            
+            if listbox_ul:
+                
+                # 提取该div下所有a标签的href属性
+                a_tags = listbox_ul.find_all("a", href=True)
+
+                for a_tag in a_tags:
+                    href = a_tag["href"]
+                    if href and href not in ["#", "javascript:"]:
+                        
+                        # 构建完整URL
+                        if href.startswith("http"):
+                            full_url = href
+                        else:
+                            # 确保base_url格式正确
+                            if base_url.endswith("/index.html"):
+                                base_url = base_url[:-11]
+                            
+                            # 确保base_url以/结尾
+                            if not base_url.endswith("/"):
+                                base_url += "/"
+                            
+                            # 处理各种相对路径
+                            if href.startswith("/"):
+                                # 根相对路径
+                                full_url = base_url.split("://")[0] + "://" + base_url.split("://")[1].split("/")[0] + href
+                            elif href.startswith("../"):
+                                # 父目录相对路径
+                                full_url = base_url + href
+                            elif href.startswith("./"):
+                                # 当前目录相对路径
+                                full_url = base_url + href[2:]
+                            else:
+                                # 直接以文件名开头的相对路径
+                                full_url = base_url + href
+                        
+                        links.append(full_url) 
+                        if len(links) > 5:
+                            break
+                
+                if links:
+                    # 去重
+                    unique_links = list(set(links))
+                    info(f"北京外国语大学-信息中心网站提取到 {len(unique_links)} 条链接", "extract")                
+                    return unique_links
+            else:
+                warning("未找到class='m-listb2'的ul标签", "extract")
+                return None     
+
         # 2. 通用链接提取逻辑（适用于其他网站或教育部网站未找到moe-list的情况）
         href_pattern = re.compile(r'href=["\'](.*?)["\']')
         all_hrefs = href_pattern.findall(page_source)
@@ -609,7 +727,7 @@ class NewsExtractor:
         response = client.chat.completions.create(
             model="doubao-seed-2-0-pro-260215",  # 模型ID，可在方舟控制台查看
             messages=[
-                {"role": "system", "content": "你是一个专业的文本摘要助手，用简洁、通顺的中文生成文章摘要，保留核心信息和关键结论，控制在250字左右。"},
+                {"role": "system", "content": "你是一个专业的文本摘要助手，用简洁、通顺的中文生成文章摘要，保留核心信息和关键结论，控制在150字左右。"},
                 {"role": "user", "content": f"请为下面的文章生成摘要：\n{article}。不要生成多余内容如字数统计等。"}
             ],
             temperature=0.2,  # 越低越稳定、越贴近原文

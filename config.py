@@ -45,13 +45,27 @@ NEWS_SOURCES = [
         "source":"北京市政府官网-北京要闻"
     },
     {
-        "url":"https://www.toutiao.com/c/user/token/CiiKeMCqF1WLUzJbc2sPgIUpWP07ThNbYWzsvUzlogkKr3Qyd79IQMY1GkkKPAAAAAAAAAAAAABQEt9BK3U1ycxEIwdxTR4LEcJSlW0QbN8jfMXnDg7O0EF07XaarJQkdm8bvWmTz2ehFxCp04kOGMPFg-oEIgEDng1CJQ==/?tab=article",
-        "source":"今日头条高校之窗"
-     },
-    {
         "url":"https://www.edu.cn/xxh/tpxw/index.shtml",  
         "source":"中国教育和科研计算机网滚动新闻"
+    },
+    {
+        "url":"https://news.bfsu.edu.cn/list/4", 
+        "source":"北京外国语大学-北外时讯" 
+    },
+    {
+        "url":"https://itc.bfsu.edu.cn/xwgg/xwdt.htm", 
+        "source":"北京外国语大学-信息中心"
     }
+]
+
+
+NEWS_SOURCES1 = [
+
+    {
+        "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=Mzg2MTc1NzAxNQ==",
+        "source":"高校信息化名家汇"
+    }
+
 ]
 
 # 数据库配置

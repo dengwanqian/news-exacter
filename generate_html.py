@@ -4,6 +4,10 @@ import datetime
 
 import datetime
 from logger import info, debug, error, warning
+import pdfkit
+
+# 配置wkhtmltopdf路径
+config = pdfkit.configuration(wkhtmltopdf=r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe')
 
 # 连接数据库
 db = NewsDatabase("news.db")
@@ -66,8 +70,12 @@ template = Template(template_content)
 html_content = template.render(news_list=news_data, update_time=update_time)
 
 # 保存生成的HTML
-output_file = f"教育信息化一周资讯_{datetime.datetime.now().strftime('%Y%m%d')}.html"
+output_prefix =  f"教育信息化一周资讯_{datetime.datetime.now().strftime('%Y%m%d')}"
+output_file = f"{output_prefix}.html"
 with open(output_file, "w", encoding="utf-8") as f:
     f.write(html_content)
 
 info(f"HTML页面已生成: {output_file}")
+pdfkit.from_file(output_file, f"{output_prefix}.pdf", configuration=config)
+
+info(f"PDF文件已生成: {output_prefix}.pdf")

@@ -71,7 +71,10 @@ def main():
                 
                 # 提取新闻链接
                 news_links = extractor.extract_news_links(page_source, source_url)
-            print(f"提取到 {len(news_links)} 条新闻链接")
+            if news_links:
+                info(f"提取到 {len(news_links)} 条新闻链接")
+            else:
+                info(f"未提取到新闻链接")
 
             
             # 遍历新闻链接，提取内容

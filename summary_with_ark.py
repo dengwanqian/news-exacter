@@ -44,11 +44,11 @@ for news in news_list:
     response = client.chat.completions.create(
         model="doubao-seed-2-0-pro-260215",  # 模型ID，可在方舟控制台查看
         messages=[
-            {"role": "system", "content": "你是一个专业的文本摘要助手，用简洁、通顺的中文生成文章摘要，保留核心信息和关键结论，控制在250字左右。"},
+            {"role": "system", "content": "你是一个专业的文本摘要助手，用简洁、通顺的中文生成文章摘要，保留核心信息和关键结论，控制在150字左右。"},
             {"role": "user", "content": f"请为下面的文章生成摘要：\n{article}。不要生成多余内容如字数统计等。"}
         ],
         temperature=0.2,  # 越低越稳定、越贴近原文
-        max_tokens=400    # 摘要长度上限
+        max_tokens=300    # 摘要长度上限
     )
     # 输出结果
     summary = response.choices[0].message.content

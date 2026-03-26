@@ -62,7 +62,7 @@ with open("template.html", "r", encoding="utf-8") as f:
 
 # 渲染模板
 template = Template(template_content)
-html_content = template.render(news_list=news_data)
+html_content = template.render(news_list=news_data, update_time=update_time)
 
 # 保存生成的HTML
 output_file = f"教育信息化一周资讯(含待审)_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.html"
