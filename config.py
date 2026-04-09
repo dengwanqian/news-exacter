@@ -17,10 +17,6 @@ NEWS_SOURCES = [
         "source":"中国青年报"
     },
     {
-        "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=MjM5NzM1MDgyMw==",
-        "source":"中国教育协会"
-    },
-    {
         "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=MjM5MzMyOTgzNQ==",
         "source":"中国教育技术协会"
     },
