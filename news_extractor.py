@@ -54,8 +54,9 @@ class NewsExtractor:
         chrome_options.add_experimental_option("useAutomationExtension", False)
         
         # 直接指定驱动路径，避免网络下载
-        # 请根据实际情况修改为您本地的Chrome驱动路径
-        driver_path = "./chromedriver.exe"
+        # 使用脚本所在目录的绝对路径，确保在任何工作目录下都能找到驱动
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        driver_path = os.path.join(base_dir, "chromedriver.exe")
         
         try:
             # 尝试Selenium 4.x的方式
@@ -110,8 +111,7 @@ class NewsExtractor:
         # 或使用 urljoin（更安全，处理基础 URL 末尾是否有 / 的情况）
         # full_url = urljoin(base_url, f"?{query_string}")
 
-        driver = webdriver.Chrome()
-
+        driver = self.driver
 
         driver.get(url)
         driver.implicitly_wait(2)
@@ -684,6 +684,10 @@ class NewsExtractor:
     
     def extract_news_content(self, page_source, url):
         try:
+            # 修复 GNE 库的误匹配问题：body class 中的 comment_feature 包含 comment 子串
+            # 导致 normalize_node 误删整个 body 节点（list index out of range）
+            page_source = page_source.replace('comment_feature', 'cmt_feature')
+            
             result = self.extractor.extract(page_source, noise_node_list=["//div[@class='comment']", "//div[@class='advertisement']"])
             
             # 确保所有必要字段都存在
@@ -698,7 +702,9 @@ class NewsExtractor:
             
             return news_data
         except Exception as e:
+            import traceback
             error(f"提取新闻内容失败 {url}: {e}")
+            error(traceback.format_exc())
             return None
     
     def summarize_content(self, content):
