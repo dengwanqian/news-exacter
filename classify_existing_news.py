@@ -7,7 +7,9 @@
 import sqlite3
 import requests
 import json
+import os
 from datetime import datetime
+from openai import OpenAI
 from logger import info, debug, error, warning
 
 
@@ -46,11 +48,11 @@ class NewsDatabase:
         except Exception as e:
             error(f"更新分类失败: {e}", "database")
             return False
-    def update_final_category(self, news_id, final_category):
+    def update_final_category(self, news_id, final_category,source,author):
         """更新新闻的最终分类信息"""
         try:
-            sql = "UPDATE news SET final_category = ? WHERE id = ?"
-            self.cursor.execute(sql, (final_category, news_id))
+            sql = "UPDATE news SET final_category = ? ,source = ?, author = ? WHERE id = ?"
+            self.cursor.execute(sql, (final_category, source, author, news_id))
             self.conn.commit()
             return True
         except Exception as e:
@@ -62,9 +64,16 @@ class NewsDatabase:
             self.conn.close()
 
 class CategoryClassifier:
-    def __init__(self, api_key, secret_key):
+    def __init__(self, api_key, secret_key, ark_api_key=None):
         self.api_key = api_key
         self.secret_key = secret_key
+        self.ark_api_key = ark_api_key
+        self.ark_client = None
+        if self.ark_api_key:
+            self.ark_client = OpenAI(
+                api_key=self.ark_api_key,
+                base_url="https://ark.cn-beijing.volces.com/api/v3"
+            )
     
     def get_access_token(self):
         """获取百度智能云API的access token"""
@@ -166,29 +175,51 @@ class CategoryClassifier:
         except Exception as e:
             error(f"分类失败: {e}", "classification")
             return "其他", "其他"
+    def check_education_info_by_llm(self, title, content):
+        """使用火山大模型判断内容是否属于教育信息化范畴"""
+        if not self.ark_client:
+            return True
+        try:
+            prompt_content = content[:800] if content else ""
+            response = self.ark_client.chat.completions.create(
+                model="doubao-seed-2-0-pro-260215",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "你是一个教育信息化领域的内容审核专家。请判断给定的新闻内容是否属于教育信息化范畴。教育信息化包括：高校信息化、教育技术应用、智慧教育、在线教育、教育数字化转型、教育装备信息化、教育管理信息化、教育大数据、人工智能对教育的影响等。请只回答一个字：如果属于回答'是'，如果不属于回答'否'。"
+                    },
+                    {
+                        "role": "user",
+                        "content": f"标题：{title}\n内容：{prompt_content}\n\n请判断这条资讯是否属于教育信息化范畴。只回答'是'或'否'。"
+                    }
+                ],
+                temperature=0.2,
+                max_tokens=10
+            )
+            answer = response.choices[0].message.content.strip()
+            info(f"大模型审核结果: {answer}", "classification")
+            if "否" in answer:
+                return False
+            if "是" in answer:
+                return True
+            return True
+        except Exception as e:
+            error(f"大模型审核失败: {e}", "classification")
+            return True
+
     def final_classify(self, title, content, category, subcategory, source, author):
         """根据标题、内容、分类、子分类、来源和作者进行最终分类"""
-        # 这里可以添加复杂的分类逻辑
-        # 例如，根据标题、内容、分类、子分类、来源和作者进行判断
-        # 返回最终的分类结果
         final_category = "待审"
         if source == "Ai机器人-每日AI新闻" :
             final_category = "4.科技前沿"
             if category != "科技":
                 final_category = "待审"
         elif source == "中国教育和科研计算机网滚动新闻":
+            source = "中国教育和科研计算机网"
             final_category = "1.行业新闻"
             #如果category等于教育且subcategory包含大学
             if any(keyword in content for keyword in ["本文","主任谈","观点","专家","哪些","学术","讲座"]):
                 final_category = "2.专家视点"
-            elif  category == "教育" and subcategory.find("大学") != -1:
-                final_category = "3.高校动态"
-        elif source.startswith("中国教育新闻网"):
-            final_category = "1.行业新闻"
-            if author == "胡编":
-                final_category = "待审"
-            elif  not category in ["教育","科技","时事"]:
-                final_category = "待审"
             elif  category == "教育" and subcategory.find("大学") != -1:
                 final_category = "3.高校动态"
         elif source == "今日头条高校之窗":
@@ -213,11 +244,6 @@ class CategoryClassifier:
                 final_category = "1.行业新闻"
                 if any(keyword in title for keyword in ["时评","聚焦","建议","主任谈","专家","文章"]):
                     final_category = "2.专家视点"
-        elif source == "中国教育协会":
-                final_category = "1.行业新闻"
-                if any(keyword in title for keyword in ["时评","聚焦","建议","主任谈","专家","文章"]):
-                    final_category = "2.专家视点"
-
         elif source == "中国高等教育协会":
                 final_category = "1.行业新闻"
                 if any(keyword in title for keyword in ["时评","聚焦","建议","主任谈","专家"]):
@@ -232,7 +258,29 @@ class CategoryClassifier:
                     final_category = "2.专家视点"
                 elif  category == "科技" or subcategory.find("科技") != -1:
                     final_category = "4.科技前沿"
-        return final_category
+        elif source.startswith("北京外国语大学"):
+                final_category = "3.高校动态"
+                if any(keyword in title for keyword in ["时评","聚焦","建议","主任谈","专家","文章"]):
+                    final_category = "2.专家视点"
+
+
+        if author and author.startswith("source:"):
+            source = author[7:]
+            author = ""
+        if final_category == "待审" and subcategory.find("大学") != -1:
+            final_category = "3.高校动态"
+
+        if author and len(author) <=3:
+            final_category = "2.专家视点"
+
+
+        # 对非"4.科技前沿"内容，使用大模型审核是否属于教育信息化
+        if final_category not in ["4.科技前沿"]:
+            is_edu_info = self.check_education_info_by_llm(title, content)
+            if not is_edu_info:
+                final_category = "9.大模型排除"
+
+        return final_category,source,author
 
 def main():
     # 从环境变量文件中获取API密钥
@@ -245,6 +293,7 @@ def main():
 
     API_KEY = os.getenv("WENXIN_API_KEY")
     SECRET_KEY = os.getenv("WENXIN_SECRET_KEY")
+    ARK_API_KEY = os.getenv("ARK_API_KEY")
     
     # 检查API密钥是否设置
     if not API_KEY or not SECRET_KEY:
@@ -255,7 +304,7 @@ def main():
     db = NewsDatabase("news.db")
     
     # 初始化分类器
-    classifier = CategoryClassifier(API_KEY, SECRET_KEY)
+    classifier = CategoryClassifier(API_KEY, SECRET_KEY, ARK_API_KEY)
     
     # 获取需要分类的新闻
     news_list = db.get_news_without_category()
@@ -284,10 +333,10 @@ def main():
    # 处理每条新闻
     for news in news_list:
         news_id, title, summary, category, subcategory,source, author = news
-        final_category = classifier.final_classify(title, summary, category, subcategory, source, author)
+        final_category,source,author = classifier.final_classify(title, summary, category, subcategory, source, author)
         
         # 更新数据库
-        success = db.update_final_category(news_id, final_category)
+        success = db.update_final_category(news_id, final_category, source, author)
         if success:
             info(f"更新分类成功:{title}:{final_category}", "database")
         else:

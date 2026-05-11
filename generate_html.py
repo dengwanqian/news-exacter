@@ -16,7 +16,7 @@ db = NewsDatabase("news.db")
 news_list = db.get_all_news(limit=200)
 news_list = sorted(news_list, key=lambda x: x[10], reverse=False)
 
-# 过滤近两周内的新闻
+# 过滤近一周/两周内的新闻
 two_weeks_ago = datetime.datetime.now() - datetime.timedelta(weeks=2)
 one_weeks_ago = datetime.datetime.now() - datetime.timedelta(weeks=1)
 update_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -28,7 +28,7 @@ for news in news_list:
     if publish_time_str:
         try:
             # 尝试解析发布时间
-            publish_time = datetime.datetime.strptime(publish_time_str[:10], "%Y-%m-%d")
+            publish_time = datetime.datetime.strptime(publish_time_str[:10], "%Y%m%d")
             if publish_time >= one_weeks_ago:
                 filtered_news.append(news)
         except:
@@ -38,7 +38,7 @@ for news in news_list:
         # 如果没有发布时间，跳过时间检查
         filtered_news.append(news)
 
-info(f"总共 {len(news_list)} 条新闻，过滤后保留 {len(filtered_news)} 条近两周内的新闻")
+info(f"总共 {len(news_list)} 条新闻，过滤后保留 {len(filtered_news)} 条近一周内的新闻")
 news_list = filtered_news
 
 # 关闭数据库连接

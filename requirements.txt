@@ -1,5 +1,4 @@
 selenium
-GeneralNewsExtractor
 requests
 beautifulsoup4
 lxml

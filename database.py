@@ -53,7 +53,7 @@ class NewsDatabase:
     
     def get_all_news(self, limit=None):
 
-        sql = "SELECT * FROM news  where final_category != '待审' ORDER BY  publish_time DESC "
+        sql = "SELECT * FROM news  where final_category != '待审' and final_category not like '%大模型排除%' ORDER BY  publish_time DESC "
         if limit:
             sql += f" LIMIT {limit}"
         self.cursor.execute(sql)

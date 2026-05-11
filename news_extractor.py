@@ -7,9 +7,10 @@ from requests.compat import urlencode
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+from selenium.common.exceptions import InvalidSessionIdException, WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
-from gne import GeneralNewsExtractor
+from gne_local import GeneralNewsExtractor
 import time
 import re
 
@@ -162,6 +163,9 @@ class NewsExtractor:
                 page_source = moe_list_pre.text
         
         data_json = json.loads(page_source)
+        if data_json["base_resp"] and data_json["base_resp"]["err_msg"] == 'invalid session':
+            error("invalid session, 请手工登录微信公众号平台,获取相关参数并更新.env中的wechat_cookie和wechat_querystring")
+            exit()
         publish_list = json.loads(data_json["publish_page"])["publish_list"]
         links = []
         for publish_item in publish_list:
@@ -177,33 +181,79 @@ class NewsExtractor:
 
         return links
 
-    def get_rendered_page(self, url):
+    def _ensure_driver(self):
+        """检查 driver 是否可用，如果不可用则重新初始化"""
         try:
-            debug(f"正在获取页面: {url}")
-            self.driver.get(url)
-            
-            # 针对今日头条增加更长的等待时间
-            if "toutiao.com" in url:
+            # 尝试执行一个简单命令来验证 session 是否有效
+            if self.driver:
+                self.driver.title
+                return True
+        except (InvalidSessionIdException, WebDriverException):
+            warning("WebDriver 会话已失效，正在重新初始化...", "selenium")
+        
+        # 如果 driver 不存在或 session 无效，重新初始化
+        try:
+            if self.driver:
+                try:
+                    self.driver.quit()
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        
+        self.driver = self.init_driver()
+        info("WebDriver 重新初始化完成", "selenium")
+        return True
 
-                time.sleep(15)  # 更长的等待时间
-                for i in range(1):
-                    self.driver.execute_script("window.scrollBy(0, 1000);")
-                    time.sleep(4)
-            else:
-                time.sleep(10)  # 普通网站的等待时间
-            
-            # 保存页面源代码以便调试
-            if "toutiao.com" in url:
-                with open("toutiao_page.html", "w", encoding="utf-8") as f:
-                    f.write(self.driver.page_source)
-            
-            return self.driver.page_source
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            error(f"获取渲染页面失败 {url}: {e}")
-            error(traceback.format_exc())
-            return None
+    def get_rendered_page(self, url):
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                # 确保 driver 可用
+                self._ensure_driver()
+                
+                debug(f"正在获取页面: {url} (尝试 {attempt + 1}/{max_retries})")
+                self.driver.get(url)
+                
+                # 针对今日头条增加更长的等待时间
+                if "toutiao.com" in url:
+
+                    time.sleep(15)  # 更长的等待时间
+                    for i in range(1):
+                        self.driver.execute_script("window.scrollBy(0, 1000);")
+                        time.sleep(4)
+                else:
+                    time.sleep(10)  # 普通网站的等待时间
+                
+                # 保存页面源代码以便调试
+                if "toutiao.com" in url:
+                    with open("toutiao_page.html", "w", encoding="utf-8") as f:
+                        f.write(self.driver.page_source)
+                
+                return self.driver.page_source
+            except InvalidSessionIdException:
+                error(f"WebDriver 会话失效，尝试重新连接... (尝试 {attempt + 1}/{max_retries})", "selenium")
+                # 强制重置 driver，下次循环会重新初始化
+                self.driver = None
+                if attempt == max_retries - 1:
+                    return None
+                time.sleep(2)
+            except WebDriverException as e:
+                error(f"WebDriver 异常 {url}: {e}", "selenium")
+                # 如果是会话相关错误，尝试重置
+                if "session" in str(e).lower() or "no such window" in str(e).lower():
+                    self.driver = None
+                    if attempt == max_retries - 1:
+                        return None
+                    time.sleep(2)
+                else:
+                    return None
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                error(f"获取渲染页面失败 {url}: {e}")
+                error(traceback.format_exc())
+                return None
     
     def extract_news_links(self, page_source, base_url):
         info(f"开始提取链接: {base_url}")
@@ -682,6 +732,32 @@ class NewsExtractor:
 
         return news_links if news_links else unique_links[:20]  # 至少返回一些链接
     
+    def _format_publish_time(self, publish_time):
+        """将发布时间统一格式化为 'YYYY年M月D日 HH:MM' 格式"""
+        if not publish_time:
+            return ""
+        formats = [
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d %H:%M",
+            "%Y年%m月%d日 %H:%M:%S",
+            "%Y年%m月%d日 %H:%M",
+            "%Y/%m/%d %H:%M:%S",
+            "%Y/%m/%d %H:%M",
+            "%Y-%m-%dT%H:%M:%S",
+        ]
+        for fmt in formats:
+            try:
+                dt = datetime.datetime.strptime(publish_time.strip(), fmt)
+                return dt.strftime("%Y-%m-%d %H:%M")
+            except ValueError:
+                continue
+        # 兜底：用正则提取日期时间数字
+        match = re.search(r'(\d{4})[-/年](\d{1,2})[-/月](\d{1,2})[日\sT]*(\d{1,2}):(\d{2})', publish_time)
+        if match:
+            year, month, day, hour, minute = match.groups()
+            return f"{year}年{int(month)}月{int(day)}日 {hour.zfill(2)}:{minute}"
+        return publish_time
+
     def extract_news_content(self, page_source, url):
         try:
             # 修复 GNE 库的误匹配问题：body class 中的 comment_feature 包含 comment 子串
@@ -690,16 +766,30 @@ class NewsExtractor:
             
             result = self.extractor.extract(page_source, noise_node_list=["//div[@class='comment']", "//div[@class='advertisement']"])
             
+            publish_time = result.get("publish_time", "")
+            if publish_time:
+                publish_time = self._format_publish_time(publish_time)
+            
+
             # 确保所有必要字段都存在
             news_data = {
                 "title": result.get("title", ""),
                 "author": result.get("author", ""),
-                "publish_time": result.get("publish_time", ""),
+                "publish_time": publish_time,
                 "source": result.get("source", ""),
                 "content": result.get("content", ""),
                 "url": url
             }
-            
+            #进行作者、来源等属性优化处理
+            if news_data["author"]:
+                value=news_data["author"]
+                #如果value包含教育、报、政府、官网等字样
+                if value and any(keyword in value for keyword in ["教育", "报", "政府", "官网","新闻"]):
+                    news_data["author"] = "source:" + value    
+                if value.startswith("点击"):
+                    news_data["author"] = ""
+            if news_data["source"] and not news_data["author"]:
+                news_data["author"] = "source:" + news_data["source"]
             return news_data
         except Exception as e:
             import traceback
@@ -754,7 +844,15 @@ class NewsExtractor:
     
     def close(self):
         if self.driver:
-            self.driver.quit()
+            try:
+                self.driver.quit()
+            except (InvalidSessionIdException, WebDriverException):
+                # 会话已经失效，忽略关闭错误
+                pass
+            except Exception as e:
+                warning(f"关闭 WebDriver 时出错: {e}", "selenium")
+            finally:
+                self.driver = None
     
     def classify_content(self, title, content):
         """使用百度智能云NLP分类API对内容进行分类"""

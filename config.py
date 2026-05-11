@@ -42,15 +42,15 @@ NEWS_SOURCES = [
     },
     {
         "url":"https://www.edu.cn/xxh/tpxw/index.shtml",  
-        "source":"中国教育和科研计算机网滚动新闻"
+        "source":"中国教育和科研计算机网"
     },
     {
         "url":"https://news.bfsu.edu.cn/list/4", 
-        "source":"北京外国语大学-北外时讯" 
+        "source":"北京外国语大学" 
     },
     {
         "url":"https://itc.bfsu.edu.cn/xwgg/xwdt.htm", 
-        "source":"北京外国语大学-信息中心"
+        "source":"北京外国语大学信息技术中心"
     }
 ]
 
@@ -58,8 +58,8 @@ NEWS_SOURCES = [
 NEWS_SOURCES1 = [
 
     {
-        "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=Mzg2MTc1NzAxNQ==",
-        "source":"高校信息化名家汇"
+        "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=Mzg4MTAwMzgxNw==",
+        "source":"教育信息化资讯"
     }
 
 ]

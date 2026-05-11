@@ -150,12 +150,16 @@ def main():
                 # 传递标题和内容作为参数
                 category, subcategory = extractor.classify_content(news_data["title"], summary)
                                
-                # 保存到数据库，使用配置中的source名称
+                # 保存到数据库，使用配置中的source名称(如果source为空)
+                #source = news_data["source"]
+                #if source=="":
+                source = source_name
+                print(f"保存新闻: {source}")
                 success = db.insert_news(
                     title=news_data["title"],
                     author=news_data["author"],
                     publish_time=news_data["publish_time"],
-                    source=source_name,  # 使用配置中的source名称
+                    source=source,  
                     content=news_data["content"],
                     summary=summary,
                     url=news_data["url"],
