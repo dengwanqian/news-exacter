@@ -78,9 +78,10 @@ def sync_to_pg(rows):
 
     try:
         for row in rows:
-            created_at = parse_datetime(row["created_at"])
-            if created_at is None:
-                logger.warning(f"跳过记录(created_at无法解析): {row['title']}")
+            # created_at 字段已改为字符类型，直接复制原始值，不做转换
+            created_at = row["created_at"]
+            if not created_at:
+                logger.warning(f"跳过记录(created_at为空): {row['title']}")
                 continue
 
             # 检查是否已存在（以created_at精确匹配）
@@ -92,7 +93,8 @@ def sync_to_pg(rows):
                 skipped_count += 1
                 continue
 
-            publish_time = parse_datetime(row["publish_time"])
+            # publish_time 字段已改为字符类型，直接复制原始值，不做转换
+            publish_time = row["publish_time"]
 
             # 插入数据
             cur.execute(
