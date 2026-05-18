@@ -15,7 +15,8 @@ logger = get_logger("syncro")
 
 # PostgreSQL连接配置
 PG_CONFIG = {
-    "host": "localhost",
+    #"host": "localhost",
+    "host": "192.168.253.136",
     "port": 5432,
     "dbname": "vsb",
     "user": "vsb_read",
@@ -56,7 +57,7 @@ def get_sqlite_recent_news(days=7):
         "SELECT id, title, author, publish_time, source, content, summary, url, "
         "category, subcategory, final_category, created_at "
         "FROM news WHERE created_at >= ? "
-        "AND (final_category IS NULL OR final_category NOT IN ('大模型排除', '待审')) "
+        "and final_category IN ('1.行业新闻', '2.专家视点', '3.高校动态','4.科技前沿') "
         "ORDER BY created_at ASC",
         (cutoff_date,)
     )
