@@ -4,6 +4,7 @@ beautifulsoup4
 lxml
 webdriver-manager
 python-dotenv
-langchain
 openai
 jinja2
+pdfkit
+psycopg2-binary
