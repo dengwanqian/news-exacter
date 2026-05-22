@@ -21,6 +21,35 @@ LOG_FILE = os.path.join(LOG_DIR, f"news_exacter_{datetime.now().strftime('%Y%m%d
 LOG_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
+# 全局文件处理器（所有分类共享）
+global_file_handler = None
+global_console_handler = None
+
+def _get_global_handlers():
+    """
+    获取全局共享的日志处理器（避免多个处理器同时打开同一个文件）
+    :return: (file_handler, console_handler)
+    """
+    global global_file_handler, global_console_handler
+    
+    if global_file_handler is None:
+        # 创建文件处理器（带轮转）
+        global_file_handler = RotatingFileHandler(
+            LOG_FILE,
+            maxBytes=10*1024*1024,  # 10MB
+            backupCount=5,
+            encoding="utf-8"
+        )
+        global_file_handler.setLevel(logging.DEBUG)
+        global_file_handler.setFormatter(logging.Formatter(LOG_FORMAT, DATE_FORMAT))
+        
+        # 创建控制台处理器
+        global_console_handler = logging.StreamHandler()
+        global_console_handler.setLevel(logging.INFO)
+        global_console_handler.setFormatter(logging.Formatter(LOG_FORMAT, DATE_FORMAT))
+    
+    return global_file_handler, global_console_handler
+
 # 创建日志记录器
 def get_logger(name):
     """
@@ -34,20 +63,8 @@ def get_logger(name):
     
     # 避免重复添加处理器
     if not logger.handlers:
-        # 创建文件处理器（带轮转）
-        file_handler = RotatingFileHandler(
-            LOG_FILE,
-            maxBytes=10*1024*1024,  # 10MB
-            backupCount=5,
-            encoding="utf-8"
-        )
-        file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(logging.Formatter(LOG_FORMAT, DATE_FORMAT))
-        
-        # 创建控制台处理器
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.INFO)
-        console_handler.setFormatter(logging.Formatter(LOG_FORMAT, DATE_FORMAT))
+        # 使用全局共享的处理器
+        file_handler, console_handler = _get_global_handlers()
         
         # 添加处理器
         logger.addHandler(file_handler)
