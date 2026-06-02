@@ -1,8 +1,8 @@
 # 信息来源URL列表
 NEWS_SOURCES = [
     {
-        "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=Mzg2MTc1NzAxNQ==",
-        "source":"高校信息化名家汇"
+        "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=MzIzNjc1NzUzMw==",
+        "source":"量子位"
     },
     {
         "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=MzI2NzQ2NzE1NQ==",

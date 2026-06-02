@@ -25,10 +25,11 @@ filtered_news = []
 
 for news in news_list:
     publish_time_str = news[3]  # 新闻发布时间
+
     if publish_time_str:
         try:
             # 尝试解析发布时间
-            publish_time = datetime.datetime.strptime(publish_time_str[:10], "%Y%m%d")
+            publish_time = datetime.datetime.strptime(publish_time_str[:10], "%Y-%m-%d")
             if publish_time >= one_weeks_ago:
                 filtered_news.append(news)
         except:

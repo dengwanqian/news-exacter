@@ -166,6 +166,9 @@ class NewsExtractor:
         if data_json["base_resp"] and data_json["base_resp"]["err_msg"] == 'invalid session':
             error("invalid session, 请手工登录微信公众号平台,获取相关参数并更新.env中的wechat_cookie和wechat_querystring")
             exit()
+        elif data_json["base_resp"] and data_json["base_resp"]["err_msg"] == 'invalid args':
+            error(f"获取发布列表失败: {data_json['base_resp']['err_msg']}")
+            return []
         publish_list = json.loads(data_json["publish_page"])["publish_list"]
         links = []
         for publish_item in publish_list:
