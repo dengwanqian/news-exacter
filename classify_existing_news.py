@@ -214,6 +214,10 @@ class CategoryClassifier:
             final_category = "4.科技前沿"
             if category != "科技":
                 final_category = "待审"
+        if source == "量子位" :
+            final_category = "4.科技前沿"
+            if category != "科技":
+                final_category = "待审" 
         elif source == "中国教育和科研计算机网滚动新闻":
             source = "中国教育和科研计算机网"
             final_category = "1.行业新闻"

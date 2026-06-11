@@ -261,6 +261,7 @@ class NewsExtractor:
     def extract_news_links(self, page_source, base_url):
         info(f"开始提取链接: {base_url}")
         
+
         links = []
         
         # 1. 针对教育部网站的特殊处理 - 只提取class="moe-list"的div下的链接
@@ -275,38 +276,14 @@ class NewsExtractor:
 
                 # 提取该div下所有a标签的href属性
                 a_tags = moe_list_div.find_all("a", href=True)
-        
+
                 
                 for a_tag in a_tags:
                     href = a_tag["href"]
                     if href and href not in ["#", "javascript:"]:
                         
                         # 构建完整URL - 在教育部网站条件块内部处理所有相对路径
-                        if href.startswith("http"):
-                            full_url = href
-                        else:
-                            # 确保base_url格式正确
-                            if base_url.endswith("/index.html"):
-                                base_url = base_url[:-11]
-                            
-                            # 确保base_url以/结尾
-                            if not base_url.endswith("/"):
-                                base_url += "/"
-                            
-                            # 处理各种相对路径
-                            if href.startswith("/"):
-                                # 根相对路径
-                                full_url = base_url.split("://")[0] + "://" + base_url.split("://")[1].split("/")[0] + href
-                            elif href.startswith("../"):
-                                # 父目录相对路径
-                                full_url = base_url + href
-                            elif href.startswith("./"):
-                                # 当前目录相对路径
-                                full_url = base_url + href[2:]
-                            else:
-                                # 直接以文件名开头的相对路径
-                                full_url = base_url + href
-                        
+                        full_url = self.make_full_url(base_url, href)                        
                         links.append(full_url)
                 
                 if links:
@@ -373,7 +350,7 @@ class NewsExtractor:
                     return unique_links
             else:
                 warning("未找到class='main-l'的div标签", "extract")
-                return None
+                return None 
 
         
         # 3. 针对edu.cn网站的特殊处理 - 只提取class="section2ContentRightTitle"的div下的链接
@@ -627,31 +604,8 @@ class NewsExtractor:
                     if href and href not in ["#", "javascript:"]:
                         
                         # 构建完整URL
-                        if href.startswith("http"):
-                            full_url = href
-                        else:
-                            # 确保base_url格式正确
-                            if base_url.endswith("/index.html"):
-                                base_url = base_url[:-11]
-                            
-                            # 确保base_url以/结尾
-                            if not base_url.endswith("/"):
-                                base_url += "/"
-                            
-                            # 处理各种相对路径
-                            if href.startswith("/"):
-                                # 根相对路径
-                                full_url = base_url.split("://")[0] + "://" + base_url.split("://")[1].split("/")[0] + href
-                            elif href.startswith("../"):
-                                # 父目录相对路径
-                                full_url = base_url + href
-                            elif href.startswith("./"):
-                                # 当前目录相对路径
-                                full_url = base_url + href[2:]
-                            else:
-                                # 直接以文件名开头的相对路径
-                                full_url = base_url + href
-                        
+                        full_url = self.make_full_url(base_url, href)
+ 
                         links.append(full_url) 
                         if len(links) > 5:
                             break
@@ -663,9 +617,27 @@ class NewsExtractor:
                     return unique_links
             else:
                 warning("未找到class='m-listb2'的ul标签", "extract")
-                return None     
+                return None  
+        elif "edudigital123.com" in base_url:
+            info("智教说资讯网站特殊处理", "extract")
+            soup = BeautifulSoup(page_source, "html.parser")
+            
+            # 查找class="listBox"的div标签
+            listbox_div = soup.find("div", class_="textbox")
+            if listbox_div:
+                a_tags = listbox_div.find_all("a", href=True)
+                for a_tag in a_tags:    
+                    href = a_tag["href"]
+                    if href and href not in ["#", "javascript:"]:
+                        full_url = self.make_full_url(base_url, href)
+                        links.append(full_url) 
+                        if len(links) > 100:
+                            break
+            
+            
 
-        # 2. 通用链接提取逻辑（适用于其他网站或教育部网站未找到moe-list的情况）
+
+        #  通用链接提取逻辑（适用于其他网站或教育部网站未找到moe-list的情况）
         href_pattern = re.compile(r'href=["\'](.*?)["\']')
         all_hrefs = href_pattern.findall(page_source)
         debug(f"使用正则提取到 {len(all_hrefs)} 个href属性", "extract")
@@ -799,7 +771,7 @@ class NewsExtractor:
             error(f"提取新闻内容失败 {url}: {e}")
             error(traceback.format_exc())
             return None
-    
+
     def summarize_content(self, content):
         """生成新闻内容摘要，优先使用百度新闻摘要API，失败则使用备用方案"""
         if not content:
@@ -834,17 +806,12 @@ class NewsExtractor:
         )
         # 输出结果
         summary = response.choices[0].message.content
-        if summary:    
-
-            print(f"生成摘要摘要：{summary}")
+        if summary:
+            print(f"生成摘要：{summary}")
             return summary
         else:
             return ""
 
-        
-
-        
-    
     def close(self):
         if self.driver:
             try:
@@ -992,3 +959,32 @@ class NewsExtractor:
             error(f"百度智能云NLP分类API调用失败: {e}", "classification")
             # 回退到默认分类
             return "其他", "其他"
+
+    def make_full_url(self, base_url, href):
+        full_url = ""
+        if href.startswith("http"):
+            full_url = href
+        else:
+                            # 确保base_url格式正确
+                            if base_url.endswith("/index.html"):
+                                base_url = base_url[:-11]
+                            
+                            # 确保base_url以/结尾
+                            if not base_url.endswith("/"):
+                                base_url += "/"
+                            
+                            # 处理各种相对路径
+                            if href.startswith("/"):
+                                # 根相对路径
+                                full_url = base_url.split("://")[0] + "://" + base_url.split("://")[1].split("/")[0] + href
+                            elif href.startswith("../"):
+                                # 父目录相对路径
+                                full_url = base_url + href
+                            elif href.startswith("./"):
+                                # 当前目录相对路径
+                                full_url = base_url + href[2:]
+                            else:
+                                # 直接以文件名开头的相对路径
+                                full_url = base_url + href
+
+        return full_url

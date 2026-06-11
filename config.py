@@ -51,6 +51,10 @@ NEWS_SOURCES = [
     {
         "url":"https://itc.bfsu.edu.cn/xwgg/xwdt.htm", 
         "source":"北京外国语大学信息技术中心"
+    },
+    {
+        "url":"https://edudigital123.com/article/80186/",  
+        "source":"智教说资讯"
     }
 ]
 
