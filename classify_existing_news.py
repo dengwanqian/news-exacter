@@ -240,7 +240,7 @@ class CategoryClassifier:
             final_category = "1.行业新闻"
             if not category in ["教育","科技"]:
                 final_category = "待审"
-        elif source== "高校信息化名家汇":
+        elif source== "智教说资讯":
                 final_category = "3.高校动态"
         elif source == "教育信息化100人" :
                 final_category = "2.专家视点"

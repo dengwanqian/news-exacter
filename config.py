@@ -53,17 +53,17 @@ NEWS_SOURCES = [
         "source":"北京外国语大学信息技术中心"
     },
     {
-        "url":"https://edudigital123.com/article/80186/",  
+        "url":"https://edudigital123.com/article/",  
         "source":"智教说资讯"
     }
 ]
 
 
-NEWS_SOURCES1 = [
+NEWS_SOURCES0 = [
 
     {
-        "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=Mzg4MTAwMzgxNw==",
-        "source":"教育信息化资讯"
+        "url":"https://edudigital123.com/article/",  
+        "source":"智教说资讯"
     }
 
 ]
