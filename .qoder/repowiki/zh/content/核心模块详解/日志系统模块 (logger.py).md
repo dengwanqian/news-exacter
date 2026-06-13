@@ -13,6 +13,13 @@
 - [readme.MD](file://readme.MD)
 </cite>
 
+## 更新摘要
+**所做更改**
+- 更新了日志格式化和输出一致性优化部分
+- 新增了全局处理器共享机制的详细说明
+- 补充了日志格式常量定义的分析
+- 增强了日志配置稳定性的说明
+
 ## 目录
 1. [简介](#简介)
 2. [项目结构](#项目结构)
@@ -29,6 +36,8 @@
 news-exacter系统的日志系统模块是一个轻量级但功能完整的日志管理解决方案。该模块基于Python标准库的logging模块构建，提供了多级别的日志记录功能，包括信息日志、调试日志、错误日志和警告日志。系统采用文件轮转机制来管理日志文件，支持控制台输出和文件输出双重渠道，为整个新闻提取系统提供全面的日志记录能力。
 
 该日志系统特别针对新闻提取场景进行了优化，能够有效跟踪新闻爬取、数据处理、数据库操作、分类处理等各个环节的状态和异常情况，为系统的维护和故障诊断提供了重要支撑。
+
+**更新** 日志系统在配置上实现了格式化和输出的一致性优化，通过全局处理器共享机制确保所有日志输出格式统一且稳定可靠。
 
 ## 项目结构
 
@@ -63,16 +72,16 @@ HTMLGen --> Config
 ```
 
 **图表来源**
-- [logger.py:1-104](file://logger.py#L1-L104)
-- [main.py:1-206](file://main.py#L1-L206)
-- [news_extractor.py:1-200](file://news_extractor.py#L1-L200)
+- [logger.py:1-121](file://logger.py#L1-L121)
+- [main.py:1-210](file://main.py#L1-L210)
+- [news_extractor.py:1-991](file://news_extractor.py#L1-L991)
 - [database.py:1-92](file://database.py#L1-L92)
-- [classify_existing_news.py:1-200](file://classify_existing_news.py#L1-L200)
+- [classify_existing_news.py:1-351](file://classify_existing_news.py#L1-L351)
 - [generate_html.py:1-81](file://generate_html.py#L1-L81)
 
 **章节来源**
-- [logger.py:1-104](file://logger.py#L1-L104)
-- [main.py:1-206](file://main.py#L1-L206)
+- [logger.py:1-121](file://logger.py#L1-L121)
+- [main.py:1-210](file://main.py#L1-L210)
 - [config.py:1-78](file://config.py#L1-L78)
 
 ## 核心组件
@@ -80,6 +89,8 @@ HTMLGen --> Config
 ### 日志记录器工厂
 
 日志系统的核心是`get_logger`函数，它负责创建和配置日志记录器实例。该函数确保每个日志记录器只被配置一次，避免重复添加处理器的问题。
+
+**更新** 通过全局处理器共享机制，系统实现了更稳定的日志配置管理。
 
 ### 分类日志记录器
 
@@ -100,7 +111,7 @@ HTMLGen --> Config
 这些函数支持自定义分类参数，允许开发者根据不同的业务场景创建特定的日志分类。
 
 **章节来源**
-- [logger.py:24-104](file://logger.py#L24-L104)
+- [logger.py:75-121](file://logger.py#L75-L121)
 
 ## 架构概览
 
@@ -122,6 +133,7 @@ HelperFunctions[便捷函数接口]
 end
 subgraph "日志配置层"
 LoggerConfig[日志记录器配置]
+GlobalHandlers[全局处理器共享]
 FileHandler[文件处理器]
 ConsoleHandler[控制台处理器]
 Formatter[格式化器]
@@ -137,7 +149,8 @@ ClassifyApp --> LoggerInterface
 HTMLApp --> LoggerInterface
 LoggerInterface --> CategoryLogger
 CategoryLogger --> HelperFunctions
-HelperFunctions --> LoggerConfig
+HelperFunctions --> GlobalHandlers
+GlobalHandlers --> LoggerConfig
 LoggerConfig --> FileHandler
 LoggerConfig --> ConsoleHandler
 LoggerConfig --> Formatter
@@ -146,11 +159,11 @@ ConsoleHandler --> ConsoleOutput
 ```
 
 **图表来源**
-- [logger.py:24-104](file://logger.py#L24-L104)
+- [logger.py:28-51](file://logger.py#L28-L51)
 - [main.py:7](file://main.py#L7)
 - [news_extractor.py:18](file://news_extractor.py#L18)
 - [database.py:3](file://database.py#L3)
-- [classify_existing_news.py:11](file://classify_existing_news.py#L11)
+- [classify_existing_news.py:12](file://classify_existing_news.py#L12)
 - [generate_html.py:6](file://generate_html.py#L6)
 
 ## 详细组件分析
@@ -177,7 +190,64 @@ Logger-->>App : 返回配置完成的日志记录器
 ```
 
 **图表来源**
-- [logger.py:12-56](file://logger.py#L12-L56)
+- [logger.py:12-51](file://logger.py#L12-L51)
+
+### 全局处理器共享机制
+
+**新增** 系统采用了创新的全局处理器共享机制，通过`global_file_handler`和`global_console_handler`变量实现处理器的全局复用：
+
+```mermaid
+flowchart TD
+Start([首次导入logger.py]) --> CheckGlobal{"检查全局处理器"}
+CheckGlobal --> GlobalExists{"全局处理器已存在?"}
+GlobalExists --> |否| CreateHandlers["创建文件处理器<br/>创建控制台处理器<br/>配置格式化器"]
+CreateHandlers --> SetGlobal["设置全局处理器变量"]
+SetGlobal --> ReturnLogger["返回日志记录器"]
+GlobalExists --> |是| ReturnLogger
+ReturnLogger --> End([完成])
+```
+
+**图表来源**
+- [logger.py:24-51](file://logger.py#L24-L51)
+
+这种设计确保：
+- 避免多个处理器同时打开同一个文件
+- 减少内存占用和资源竞争
+- 提高日志系统的稳定性
+
+### 日志格式化一致性优化
+
+**更新** 系统实现了严格的日志格式化一致性，通过预定义的格式常量确保所有日志输出格式统一：
+
+```mermaid
+classDiagram
+class LogFormatConstants {
++string LOG_FORMAT
++string DATE_FORMAT
++"%(asctime)s - %(name)s - %(levelname)s - %(message)s"
++"%Y-%m-%d %H : %M : %S"
+}
+class LogFormatter {
++format(record) string
++formatTime(record, datefmt) string
+}
+class ConsistentOutput {
++统一时间格式
++统一消息格式
++统一级别标识
+}
+LogFormatConstants --> LogFormatter : "提供格式模板"
+LogFormatter --> ConsistentOutput : "生成一致输出"
+```
+
+**图表来源**
+- [logger.py:20-22](file://logger.py#L20-L22)
+
+格式化特点：
+- 时间戳格式：`YYYY-MM-DD HH:MM:SS`
+- 日志格式：`时间 - 记录器名称 - 级别 - 消息`
+- 编码格式：UTF-8
+- 统一的消息结构
 
 ### 多级别日志记录机制
 
@@ -204,39 +274,7 @@ Logger-->>App : 返回配置完成的日志记录器
 - 典型场景：重复数据、数据格式异常、性能警告
 
 **章节来源**
-- [logger.py:74-104](file://logger.py#L74-L104)
-
-### 日志格式化器
-
-日志格式化器负责统一日志输出格式，确保所有日志信息具有一致的结构：
-
-```mermaid
-classDiagram
-class LogFormatter {
-+string log_format
-+string date_format
-+format(record) string
-+formatTime(record, datefmt) string
-}
-class LogRecord {
-+string asctime
-+string name
-+string levelname
-+string message
-+dict __dict__
-}
-class FormattedLog {
-+string timestamp
-+string logger_name
-+string level
-+string formatted_message
-}
-LogFormatter --> LogRecord : "格式化"
-LogRecord --> FormattedLog : "转换为"
-```
-
-**图表来源**
-- [logger.py:20-22](file://logger.py#L20-L22)
+- [logger.py:91-121](file://logger.py#L91-L121)
 
 ### 文件轮转机制
 
@@ -256,7 +294,7 @@ WriteLog --> End([完成])
 ```
 
 **图表来源**
-- [logger.py:38-43](file://logger.py#L38-L43)
+- [logger.py:36-42](file://logger.py#L36-L42)
 
 文件轮转配置特点：
 - 单个日志文件最大大小：10MB
@@ -265,7 +303,7 @@ WriteLog --> End([完成])
 - 按日期命名：news_exacter_YYYYMMDD.log
 
 **章节来源**
-- [logger.py:38-56](file://logger.py#L38-L56)
+- [logger.py:36-51](file://logger.py#L36-L51)
 
 ### 控制台输出策略
 
@@ -288,10 +326,10 @@ FileInfo -.->|文件| FileOutput
 ```
 
 **图表来源**
-- [logger.py:48-54](file://logger.py#L48-L54)
+- [logger.py:46-49](file://logger.py#L46-L49)
 
 **章节来源**
-- [logger.py:48-54](file://logger.py#L48-L54)
+- [logger.py:46-49](file://logger.py#L46-L49)
 
 ## 依赖关系分析
 
@@ -349,11 +387,11 @@ Main --> LangChain
 ```
 
 **图表来源**
-- [logger.py:1-104](file://logger.py#L1-L104)
-- [main.py:1-206](file://main.py#L1-L206)
-- [news_extractor.py:1-200](file://news_extractor.py#L1-L200)
+- [logger.py:1-121](file://logger.py#L1-L121)
+- [main.py:1-210](file://main.py#L1-L210)
+- [news_extractor.py:1-991](file://news_extractor.py#L1-L991)
 - [database.py:1-92](file://database.py#L1-L92)
-- [classify_existing_news.py:1-200](file://classify_existing_news.py#L1-L200)
+- [classify_existing_news.py:1-351](file://classify_existing_news.py#L1-L351)
 - [generate_html.py:1-81](file://generate_html.py#L1-L81)
 - [requirements.txt:1-10](file://requirements.txt#L1-L10)
 
@@ -366,15 +404,20 @@ Main --> LangChain
 
 日志系统采用惰性初始化策略，只有在首次使用时才创建日志记录器实例，避免不必要的内存占用。
 
+**更新** 通过全局处理器共享机制，进一步减少了内存占用和处理器创建开销。
+
 ### I/O性能优化
 
 - 文件轮转机制避免了单个文件过大导致的I/O性能问题
 - 控制台输出仅显示INFO级别以上日志，减少控制台输出压力
 - UTF-8编码确保多语言字符的正确处理
+- 全局处理器共享避免了重复的文件句柄创建
 
 ### 并发安全性
 
 日志系统使用Python标准库的线程安全特性，能够安全地在多线程环境中使用。
+
+**更新** 全局处理器共享机制确保了多线程环境下的处理器一致性，避免了竞态条件。
 
 ## 故障排除指南
 
@@ -410,6 +453,16 @@ Main --> LangChain
 1. 确认日志文件使用UTF-8编码
 2. 检查终端编码设置
 
+#### 日志格式不一致
+**症状**：不同模块的日志格式不统一
+**原因**：格式化器配置不一致
+**解决方案**：
+1. 检查全局格式常量定义
+2. 确保所有处理器使用相同的格式化器
+3. 验证日志输出格式
+
+**更新** 新增了日志格式不一致问题的排查指南。
+
 ### 调试技巧
 
 #### 使用不同日志级别进行调试
@@ -429,13 +482,22 @@ Main --> LangChain
 - 设置适当的日志保留期限
 - 监控错误日志的增长趋势
 
+#### 全局处理器共享调试
+- 检查全局处理器变量的状态
+- 验证处理器是否正确共享
+- 确保没有重复创建处理器实例
+
+**更新** 新增了全局处理器共享机制的调试技巧。
+
 **章节来源**
 - [logger.py:12-15](file://logger.py#L12-L15)
-- [logger.py:38-43](file://logger.py#L38-L43)
+- [logger.py:36-42](file://logger.py#L36-L42)
 
 ## 结论
 
 news-exacter系统的日志系统模块是一个设计精良、功能完备的日志管理解决方案。它通过合理的架构设计和配置策略，为整个新闻提取系统提供了可靠的日志记录能力。
+
+**更新** 最新的配置改进使得日志系统在格式化和输出一致性方面达到了更高的标准，通过全局处理器共享机制确保了日志输出的稳定性和可靠性。
 
 该模块的主要优势包括：
 
@@ -444,5 +506,9 @@ news-exacter系统的日志系统模块是一个设计精良、功能完备的�
 3. **自动管理**：内置文件轮转机制，自动管理日志文件
 4. **易于使用**：提供简单易用的API接口
 5. **性能友好**：采用惰性初始化和线程安全设计
+6. **格式统一**：通过全局处理器共享确保输出格式一致性
+7. **稳定可靠**：避免重复处理器创建，提高系统稳定性
 
 通过在整个应用中统一使用这套日志系统，开发者可以更好地监控系统运行状态、快速定位问题并进行有效的故障诊断。对于类似的数据采集和处理系统，这套日志方案提供了很好的参考价值。
+
+**更新** 配置改进后的日志系统在保持原有优点的基础上，进一步提升了格式化一致性和系统稳定性，为新闻提取系统的长期稳定运行提供了更好的保障。

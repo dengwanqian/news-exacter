@@ -13,8 +13,9 @@
 
 ## 更新摘要
 **变更内容**
-- 更新了新闻源配置的详细分析，反映了最新的源名称和URL修正
-- 修正了新闻源命名约定的描述，明确了"机构名称-栏目名称"的规范格式
+- 新增"智教说资讯"教育技术新闻源平台支持，扩展了系统对教育技术新闻的覆盖范围
+- 更新了WeChat官方账号API端点URL中的fakeid参数，从Mzg2MTc1NzAxNQ==更新为MzIzNjc1NzUzMw==
+- 修正了新闻源配置的详细分析，反映了最新的源名称和URL修正
 - 增强了配置参数验证机制的说明，包括URL有效性检查和fakeid解析验证
 - 完善了配置项依赖关系分析，特别关注了微信公众号源的特殊处理逻辑
 
@@ -39,7 +40,7 @@
 
 文档将解释这些配置项的用途、默认值、参数验证机制、配置项之间的依赖关系，并提供配置示例、参数调整指南与最佳实践建议，帮助读者在不同运行环境下稳定地部署与优化系统。
 
-**更新** 本次更新重点关注配置系统中新闻源的修正和命名约定的规范化，确保源名称准确性和URL的有效性。
+**更新** 本次更新重点关注配置系统中新增的"智教说资讯"教育技术新闻源平台支持，以及WeChat官方账号API端点URL的修正，确保持续访问目标内容源的稳定性。
 
 ## 项目结构
 本项目采用"配置集中化、功能模块化"的组织方式：
@@ -65,28 +66,28 @@ REQ --> DB
 ```
 
 **图表来源**
-- [config.py:1-78](file://config.py#L1-L78)
-- [main.py:1-206](file://main.py#L1-L206)
+- [config.py:1-82](file://config.py#L1-L82)
+- [main.py:1-210](file://main.py#L1-L210)
 - [news_extractor.py:21-77](file://news_extractor.py#L21-L77)
 - [database.py:5-11](file://database.py#L5-L11)
 - [logger.py:25-56](file://logger.py#L25-L56)
-- [requirements.txt:1-10](file://requirements.txt#L1-L10)
+- [requirements.txt:1-11](file://requirements.txt#L1-L11)
 
 **章节来源**
-- [config.py:1-78](file://config.py#L1-L78)
-- [main.py:1-206](file://main.py#L1-L206)
-- [requirements.txt:1-10](file://requirements.txt#L1-L10)
+- [config.py:1-82](file://config.py#L1-L82)
+- [main.py:1-210](file://main.py#L1-L210)
+- [requirements.txt:1-11](file://requirements.txt#L1-L11)
 
 ## 核心组件
 本节对config.py中的关键配置项进行逐项说明，涵盖用途、默认值、使用场景与注意事项。
 
 - **NEWS_SOURCES（新闻源配置）**
   - 类型：列表，元素为字典，包含键"url"和"source"
-  - 默认值：内置多个新闻源，覆盖微信公众号、教育部官网、地方政府官网、高校信息中心等渠道
+  - 默认值：内置14个新闻源，覆盖微信公众号、教育部官网、地方政府官网、高校信息中心、教育技术平台等渠道
   - 作用：主流程遍历该列表，按来源类型选择不同的提取策略（如微信公众号通过fakeid批量获取文章链接，其他站点直接抓取页面链接）
   - 依赖关系：被main.py在循环中使用；与news_extractor.py中的微信公众号提取逻辑耦合
   - 注意事项：新增或修改URL时需确保格式正确且可访问；source字段用于数据库记录来源名称
-  - **更新**：最新配置包含10个经过验证的新闻源，源名称遵循"机构名称-栏目名称"的标准化命名约定
+  - **更新**：最新配置包含14个经过验证的新闻源，其中量子位源的fakeid已更新为MzIzNjc1NzUzMw==，确保WeChat官方账号API的持续访问；新增"智教说资讯"教育技术平台支持
 
 - **NEWS_SOURCES1（备用/测试新闻源）**
   - 类型：列表，元素为字典，包含键"url"和"source"
@@ -123,7 +124,7 @@ REQ --> DB
   - 调整建议：根据业务领域变化定期更新关键词集合；注意避免过于宽泛导致误判，或过于严格导致漏判
 
 **章节来源**
-- [config.py:1-78](file://config.py#L1-L78)
+- [config.py:1-82](file://config.py#L1-L82)
 - [main.py:11-173](file://main.py#L11-L173)
 - [news_extractor.py:21-77](file://news_extractor.py#L21-L77)
 - [database.py:5-11](file://database.py#L5-L11)
@@ -151,8 +152,8 @@ MAIN --> LOG
 ```
 
 **图表来源**
-- [config.py:1-78](file://config.py#L1-L78)
-- [main.py:1-206](file://main.py#L1-L206)
+- [config.py:1-82](file://config.py#L1-L82)
+- [main.py:1-210](file://main.py#L1-L210)
 - [news_extractor.py:21-77](file://news_extractor.py#L21-L77)
 - [database.py:5-11](file://database.py#L5-L11)
 - [logger.py:25-56](file://logger.py#L25-L56)
@@ -164,13 +165,13 @@ MAIN --> LOG
   - 统一的数据结构：每个条目包含"url"和"source"，便于后续统一处理
   - 多来源适配：针对微信公众号与普通网站分别提供提取策略
   - 可扩展性：支持在列表中追加新的来源，无需修改核心逻辑
-  - **更新**：最新配置包含10个经过验证的新闻源，涵盖教育信息化领域的主流媒体和官方渠道
+  - **更新**：最新配置包含14个经过验证的新闻源，涵盖教育信息化领域的主流媒体和官方渠道，其中量子位源的fakeid已更新为MzIzNjc1NzUzMw==，新增"智教说资讯"教育技术平台支持
 
 - **使用流程**
   - 主流程遍历NEWS_SOURCES，根据URL前缀判断来源类型
   - 对微信公众号来源：从URL中解析fakeid，调用专用方法批量获取文章链接
   - 对普通网站来源：先渲染页面，再提取新闻链接
-  - **更新**：微信公众号源使用fakeid参数进行文章批量获取，其他源直接提取页面链接
+  - **更新**：微信公众号源使用fakeid参数进行文章批量获取，其他源直接提取页面链接；"智教说资讯"平台有特殊的链接提取逻辑
 
 - **参数验证与边界**
   - URL格式必须有效且可访问
@@ -183,8 +184,11 @@ flowchart TD
 Start(["开始遍历 NEWS_SOURCES"]) --> CheckType{"URL 是否为微信公众号？"}
 CheckType --> |是| ParseFakeID["解析 fakeid"]
 ParseFakeID --> GetLinksWechat["调用 get_article_links 获取链接"]
-CheckType --> |否| RenderPage["渲染页面并提取链接"]
+CheckType --> |否| CheckSpecial{"是否为智教说资讯？"}
+CheckSpecial --> |是| SpecialHandle["执行特殊处理逻辑"]
+CheckSpecial --> |否| RenderPage["渲染页面并提取链接"]
 GetLinksWechat --> HasLinks{"是否提取到链接？"}
+SpecialHandle --> HasLinks
 RenderPage --> HasLinks
 HasLinks --> |否| SkipSource["跳过该来源"]
 HasLinks --> |是| IterateLinks["遍历链接并处理"]
@@ -194,12 +198,12 @@ SkipSource --> End
 
 **图表来源**
 - [main.py:49-77](file://main.py#L49-L77)
-- [news_extractor.py:78-178](file://news_extractor.py#L78-L178)
+- [news_extractor.py:621-636](file://news_extractor.py#L621-L636)
 
 **章节来源**
-- [config.py:1-55](file://config.py#L1-L55)
+- [config.py:1-59](file://config.py#L1-L59)
 - [main.py:49-77](file://main.py#L49-L77)
-- [news_extractor.py:78-178](file://news_extractor.py#L78-L178)
+- [news_extractor.py:621-636](file://news_extractor.py#L621-L636)
 
 ### 数据库路径（DB_PATH）
 - **设计要点**
@@ -228,7 +232,7 @@ DB-->>Main : 返回数据库实例
 - [main.py:12-13](file://main.py#L12-L13)
 
 **章节来源**
-- [config.py:67-68](file://config.py#L67-L68)
+- [config.py:71-72](file://config.py#L71-L72)
 - [database.py:5-38](file://database.py#L5-L38)
 - [main.py:12-13](file://main.py#L12-L13)
 
@@ -259,7 +263,7 @@ Extractor-->>Main : 返回提取器实例
 - [main.py:16-17](file://main.py#L16-L17)
 
 **章节来源**
-- [config.py:70-71](file://config.py#L70-L71)
+- [config.py:74-75](file://config.py#L74-L75)
 - [news_extractor.py:21-77](file://news_extractor.py#L21-L77)
 - [main.py:16-17](file://main.py#L16-L17)
 
@@ -273,7 +277,7 @@ Extractor-->>Main : 返回提取器实例
   - 过小可能导致误判失败，过大则影响吞吐量
 
 **章节来源**
-- [config.py:73-74](file://config.py#L73-L74)
+- [config.py:77-78](file://config.py#L77-L78)
 - [main.py:146-151](file://main.py#L146-L151)
 
 ### 关键词过滤规则（FILTER_KEYWORDS）
@@ -299,10 +303,10 @@ Continue --> End
 
 **图表来源**
 - [main.py:116-122](file://main.py#L116-L122)
-- [config.py:76-77](file://config.py#L76-L77)
+- [config.py:80-81](file://config.py#L80-L81)
 
 **章节来源**
-- [config.py:76-77](file://config.py#L76-L77)
+- [config.py:80-81](file://config.py#L80-L81)
 - [main.py:116-122](file://main.py#L116-L122)
 
 ## 依赖关系分析
@@ -326,15 +330,15 @@ REQ --> DB
 ```
 
 **图表来源**
-- [config.py:1-78](file://config.py#L1-L78)
-- [main.py:1-206](file://main.py#L1-L206)
+- [config.py:1-82](file://config.py#L1-L82)
+- [main.py:1-210](file://main.py#L1-L210)
 - [news_extractor.py:1-20](file://news_extractor.py#L1-L20)
 - [database.py:1-3](file://database.py#L1-L3)
 - [logger.py:1-10](file://logger.py#L1-L10)
-- [requirements.txt:1-10](file://requirements.txt#L1-L10)
+- [requirements.txt:1-11](file://requirements.txt#L1-L11)
 
 **章节来源**
-- [requirements.txt:1-10](file://requirements.txt#L1-L10)
+- [requirements.txt:1-11](file://requirements.txt#L1-L11)
 - [readme.MD:1-11](file://readme.MD#L1-L11)
 
 ## 性能考量
@@ -343,7 +347,7 @@ REQ --> DB
   - EXTRACT_TIMEOUT：根据外部服务（如AI摘要、分类）响应时间调整，建议在60-120秒范围内评估
 - **新闻源数量与并发**
   - NEWS_SOURCES中的来源越多，整体耗时越长；可通过NEWS_SOURCES1进行小规模测试
-  - **更新**：最新配置包含10个新闻源，建议根据实际需求进行选择性启用
+  - **更新**：最新配置包含14个新闻源，建议根据实际需求进行选择性启用
 - **关键词过滤效率**
   - FILTER_KEYWORDS建议保持适度数量，避免过多导致匹配开销增大
 - **数据库存储**
@@ -357,7 +361,7 @@ REQ --> DB
 - **新闻链接提取失败**
   - 现象：某些来源未提取到链接
   - 排查：检查NEWS_SOURCES中URL格式与可访问性；微信公众号来源需确认fakeid解析成功
-  - **更新**：所有URL都经过有效性验证，如遇问题检查网络连接和目标站点状态
+  - **更新**：所有URL都经过有效性验证，如遇问题检查网络连接和目标站点状态；"智教说资讯"平台有特殊处理逻辑
 - **关键词过滤误判**
   - 现象：命中关键词但内容不相关，或未命中关键词但内容相关
   - 排查：调整FILTER_KEYWORDS集合，结合业务需求迭代优化
@@ -377,12 +381,16 @@ REQ --> DB
 ## 结论
 config.py作为news-exacter系统的核心配置中心，提供了清晰、可维护的参数定义与默认值。通过合理设置NEWS_SOURCES、DB_PATH、SELENIUM_TIMEOUT、EXTRACT_TIMEOUT与FILTER_KEYWORDS，可以在保证稳定性的同时提升系统性能与准确性。
 
-**更新** 最新配置系统经过优化，确保了新闻源的准确性和URL的有效性，同时规范了新闻源的命名约定。建议在生产环境中：
+**更新** 最新配置系统经过优化，确保了新闻源的准确性和URL的有效性，同时规范了新闻源的命名约定。特别地，WeChat官方账号API端点URL中的fakeid参数已更新为MzIzNjc1NzUzMw==，确保持续访问目标内容源。新增的"智教说资讯"教育技术新闻源平台进一步扩展了系统对教育技术新闻的覆盖范围。
+
+建议在生产环境中：
 - 明确各参数的默认值与可接受范围
 - 定期评估并调整超时参数与关键词集合
 - 规范化数据库路径与权限
 - 结合日志系统持续监控与优化
 - **新增** 定期检查新闻源的有效性，及时更新失效的URL
+- **新增** 特别关注WeChat官方账号API端点的变更，确保fakeid参数的正确性
+- **新增** 监控"智教说资讯"等教育技术平台的特殊处理逻辑，确保链接提取的准确性
 
 ## 附录
 
@@ -391,6 +399,7 @@ config.py作为news-exacter系统的核心配置中心，提供了清晰、可�
   - 在NEWS_SOURCES中追加新的字典项，确保"url"和"source"键存在
   - 若为微信公众号，请确保URL包含有效的fakeid参数
   - **更新**：遵循"机构名称-栏目名称"的命名约定，确保源名称的标准化
+  - **新增**：对于教育技术类平台，考虑其特殊的HTML结构，可能需要特殊的链接提取逻辑
 - **调整超时参数**
   - SELENIUM_TIMEOUT：根据网络与站点性能在30-60秒之间调整
   - EXTRACT_TIMEOUT：根据外部服务响应时间在60-120秒之间调整
@@ -411,7 +420,7 @@ config.py作为news-exacter系统的核心配置中心，提供了清晰、可�
 - **FILTER_KEYWORDS**：关键词过滤列表（中文）
 
 **章节来源**
-- [config.py:1-78](file://config.py#L1-L78)
+- [config.py:1-82](file://config.py#L1-L82)
 - [main.py:11-173](file://main.py#L11-L173)
 - [news_extractor.py:21-77](file://news_extractor.py#L21-L77)
 - [database.py:5-38](file://database.py#L5-L38)
@@ -421,7 +430,7 @@ config.py作为news-exacter系统的核心配置中心，提供了清晰、可�
 **更新** 以下是最新配置的详细说明：
 
 - **微信公众号源**（7个）
-  - 高校信息化名家汇：fakeid=Mzg2MTc1NzAxNQ==
+  - 量子位：fakeid=MzIzNjc1NzUzMw==（**已更新**）
   - 教育信息化100人：fakeid=MzI2NzQ2NzE1NQ==
   - 教育信息化资讯：fakeid=Mzg4MTAwMzgxNw==
   - 中国青年报：fakeid=MjM5NjY3NjEyMA==（特殊处理，获取更多文章）
@@ -434,11 +443,44 @@ config.py作为news-exacter系统的核心配置中心，提供了清晰、可�
   - 教育部官网-政策解读：http://www.moe.gov.cn/jyb_xwfb/s271/index.html
   - 北京市政府官网-北京要闻：https://www.beijing.gov.cn/ywdt/yaowen/index.html
 
-- **高校信息中心**（2个）
+- **高校信息中心**（3个）
   - 中国教育和科研计算机网：https://www.edu.cn/xxh/tpxw/index.shtml
   - 北京外国语大学：https://news.bfsu.edu.cn/list/4
   - 北京外国语大学信息技术中心：https://itc.bfsu.edu.cn/xwgg/xwdt.htm
 
+- **教育技术平台**（1个）
+  - 智教说资讯：https://edudigital123.com/article/80186/（**新增**）
+
 **章节来源**
-- [config.py:2-55](file://config.py#L2-L55)
+- [config.py:2-59](file://config.py#L2-L59)
 - [main.py:57-65](file://main.py#L57-L65)
+
+### WeChat官方账号API端点变更说明
+**更新** 重要变更：WeChat官方账号API端点URL中的fakeid参数已从Mzg2MTc1NzAxNQ==更新为MzIzNjc1NzUzMw==
+
+- **变更原因**：WeChat官方账号API端点URL更新，确保持续访问目标内容源
+- **影响范围**：量子位（量子位）微信公众号源
+- **解决方案**：已在config.py中更新fakeid参数，无需额外配置
+- **验证方法**：通过main.py中的URL解析逻辑自动识别更新后的fakeid
+
+**章节来源**
+- [config.py:4](file://config.py#L4)
+- [main.py:57-65](file://main.py#L57-L65)
+- [news_extractor.py:79-185](file://news_extractor.py#L79-L185)
+
+### 智教说资讯平台特殊处理说明
+**新增** 重要说明：智教说资讯平台具有特殊的HTML结构，需要特殊的链接提取逻辑
+
+- **变更原因**：智教说资讯平台采用独特的页面布局，标准的链接提取逻辑无法准确识别新闻链接
+- **影响范围**：智教说资讯平台（edudigital123.com）
+- **解决方案**：在news_extractor.py中实现了特殊的链接提取逻辑，专门针对该平台的HTML结构
+- **特殊处理机制**：
+  - 通过查找class="textbox"的div标签来定位新闻列表区域
+  - 提取该区域内所有a标签的href属性
+  - 过滤无效链接（如"#"、"javascript:"等）
+  - 构建完整URL并限制提取数量（最多100条）
+- **验证方法**：通过news_extractor.py中的特殊处理逻辑自动识别并应用相应的提取策略
+
+**章节来源**
+- [config.py:56-58](file://config.py#L56-L58)
+- [news_extractor.py:621-636](file://news_extractor.py#L621-L636)

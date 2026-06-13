@@ -18,6 +18,13 @@
 - [gne_local/extractor/ContentExtractor.py](file://gne_local/extractor/ContentExtractor.py)
 </cite>
 
+## 更新摘要
+**变更内容**
+- 新增 `make_full_url()` 集中化URL处理方法，消除重复的相对路径解析代码
+- 改进URL构建的一致性，统一处理各种相对路径场景
+- 优化URL处理逻辑，减少代码重复和潜在错误
+- 增强URL处理的健壮性和可维护性
+
 ## 目录
 1. [简介](#简介)
 2. [项目结构](#项目结构)
@@ -40,14 +47,16 @@
 - AI 摘要生成接口（百度火山方舟 Doubao）调用
 - 百度智能云 NLP 分类 API 集成
 - 微信公众号文章获取、页面渲染处理、链接提取、内容清洗与标准化
+- **增强的错误处理机制**，包括 invalid args 参数错误优雅降级
+- **集中化URL处理方法 make_full_url()**，统一相对路径解析逻辑
 - 具体的代码示例路径、配置参数说明、API 调用示例与故障排除指南
 
-**更新** 新增本地新闻提取库 gne_local，提供更准确的内容抽取和更好的自定义选项
+**更新** 新增集中化URL处理方法 make_full_url()，消除重复的相对路径解析代码，改进URL构建的一致性
 
 ## 项目结构
 news-exacter 采用"入口脚本 + 提取器 + 数据库 + 日志 + 配置"的分层组织方式，核心流程如下：
 - main.py 作为入口，负责遍历配置中的信息源，调度 NewsExtractor 完成抓取、链接提取、内容提取、摘要与分类、入库
-- news_extractor.py 实现新闻抓取与处理的核心逻辑，使用本地 gne_local 库进行内容提取
+- news_extractor.py 实现新闻抓取与处理的核心逻辑，使用本地 gne_local 库进行内容提取，并通过集中化URL处理方法统一处理链接
 - database.py 提供 SQLite 数据访问与表结构管理
 - logger.py 提供统一的日志输出与分类日志器
 - config.py 统一管理信息源、数据库路径、Selenium/提取超时、关键词过滤等配置
@@ -66,11 +75,15 @@ B --> G["BeautifulSoup<br/>HTML 解析"]
 B --> H["gne_local<br/>本地新闻提取库"]
 B --> I["OpenAI 客户端<br/>百度火山方舟 Doubao"]
 B --> J["百度智能云 NLP<br/>文本分类"]
-K["classify_existing_news.py<br/>二次分类"] --> C
-L["summary_with_ark.py<br/>批量摘要"] --> C
-M["gne_local/<br/>extractor/<br/>ContentExtractor"] --> H
-N["gne_local/<br/>utils.py<br/>工具函数"] --> H
-O["gne_local/<br/>defaults.py<br/>默认配置"] --> H
+B --> K["make_full_url()<br/>集中化URL处理"]
+K --> L["统一相对路径解析"]
+K --> M["消除代码重复"]
+K --> N["改进URL构建一致性"]
+O["classify_existing_news.py<br/>二次分类"] --> C
+P["summary_with_ark.py<br/>批量摘要"] --> C
+Q["gne_local/<br/>extractor/<br/>ContentExtractor"] --> H
+R["gne_local/<br/>utils.py<br/>工具函数"] --> H
+S["gne_local/<br/>defaults.py<br/>默认配置"] --> H
 ```
 
 **图表来源**
@@ -94,8 +107,10 @@ O["gne_local/<br/>defaults.py<br/>默认配置"] --> H
 - NewsDatabase 类：SQLite 数据库访问与表结构管理
 - Logger 模块：统一日志输出，支持按类别输出到文件与控制台
 - 配置模块：集中管理信息源、数据库路径、超时、关键词过滤等
+- **增强的错误处理机制**：提供优雅的参数错误降级处理
+- **集中化URL处理方法**：make_full_url() 统一处理相对路径解析，消除代码重复
 
-**更新** 新增 gne_local 本地新闻提取库，替代外部依赖，提供更灵活的内容抽取能力
+**更新** 新增集中化URL处理方法 make_full_url()，统一相对路径解析逻辑，提高代码一致性和可维护性
 
 **章节来源**
 - [news_extractor.py:21-893](file://news_extractor.py#L21-L893)
@@ -107,7 +122,7 @@ O["gne_local/<br/>defaults.py<br/>默认配置"] --> H
 NewsExtractor 的整体工作流如下：
 - 初始化：加载环境变量、构建 Selenium 无头浏览器、初始化 **本地 gne_local** 提取器
 - 信息源遍历：微信公众号走专用接口，普通网站通过 get_rendered_page 渲染页面
-- 链接提取：针对不同网站采用特定选择器与通用正则策略，构建绝对 URL 并过滤非新闻链接
+- 链接提取：针对不同网站采用特定选择器与通用正则策略，**通过 make_full_url() 统一构建绝对URL**，过滤非新闻链接
 - 内容抽取：使用 **本地 gne_local** 结合 BeautifulSoup 清洗噪声节点，提取标题、作者、发布时间、正文、来源与 URL
 - 摘要生成：调用百度火山方舟 Doubao API 生成摘要
 - 分类调用：调用百度智能云 NLP 文本分类 API，解析主/子分类
@@ -130,7 +145,8 @@ alt 微信公众号
 NE->>NE : get_article_links(fakeid, begin, count)
 NE->>WD : get(url) + add_cookie
 NE->>BS : 解析 JSON/HTML
-NE-->>M : 返回文章链接列表
+NE->>NE : 检查 err_msg
+NE-->>M : 返回文章链接列表或空列表
 else 普通网站
 NE->>NE : get_rendered_page(url)
 NE->>WD : get(url) + 等待滚动/加载
@@ -142,6 +158,7 @@ NE->>NE : extract_news_content(page_source, url)
 NE->>GNE : extract(noise_node_list)
 NE->>CE : ContentExtractor.extract()
 CE-->>NE : 返回正文内容
+NE->>NE : make_full_url(base_url, href)
 NE-->>M : 返回新闻数据
 M->>NE : summarize_content(content)
 NE->>ARK : chat.completions.create(...)
@@ -174,10 +191,12 @@ end
   - 从配置 URL 中解析 fakeid
   - 构造查询参数，设置 cookies，访问 appmsgpublish 接口
   - 解析返回的 JSON，提取 publish_list 中的 publish_info，再提取每篇文章的标题、链接与更新时间
+  - **新增参数错误处理**：当 err_msg 为 'invalid args' 时，记录错误并返回空列表
 - 页面渲染与链接提取
   - get_rendered_page 支持针对特定站点（如 toutiao.com）的延时与滚动
   - extract_news_links 针对多个网站采用特定容器选择器（如 moe-list、main-l、section2ContentRightTitle 等）
-  - 通用策略：使用正则提取 href 属性，构建绝对 URL，过滤无效/媒体/样式链接，基于关键词、日期模式、链接长度进行新闻链接筛选
+  - **集中化URL处理**：使用 make_full_url() 统一构建绝对URL，消除重复的相对路径解析代码
+  - 通用策略：使用正则提取 href 属性，**通过 make_full_url() 处理相对路径**，过滤无效/媒体/样式链接，基于关键词、日期模式、链接长度进行新闻链接筛选
 - 内容提取与清洗
   - **extract_news_content 使用本地 gne_local 的 GeneralNewsExtractor 进行内容提取**
   - **修复 GNE 对 comment_feature 的误判导致的异常**
@@ -211,6 +230,7 @@ class NewsExtractor {
 +extract_news_content(page_source, url)
 +summarize_content(content)
 +classify_content(title, content)
++make_full_url(base_url, href)
 +close()
 }
 ```
@@ -236,13 +256,15 @@ class NewsExtractor {
 - [news_extractor.py:43-77](file://news_extractor.py#L43-L77)
 
 ### 多网站适配策略
-- 教育部（moe.gov.cn）：仅提取 class="moe-list" 下的链接，处理相对路径
-- 今日头条（toutiao.com）：仅提取 class="main-l" 下的链接，处理相对路径
-- 中国教育和科研计算机网（www.edu.cn）：仅提取 class="section2ContentRightTitle" 下的链接，处理相对路径
-- ai-bot.cn：仅提取 class="news-list" 下的链接，最多前 10 条
-- 北京市政府（beijing.gov.cn）：仅提取 ul.list 下的链接，处理相对路径
-- 北京外国语大学系列：分别处理 div.page-list 与 ul.m-listb2，限制提取数量
-- 通用策略：正则提取 href，构建绝对 URL，过滤无效扩展名与媒体文件，基于关键词、日期模式、链接长度筛选
+- 教育部（moe.gov.cn）：仅提取 class="moe-list" 下的链接，**通过 make_full_url() 处理相对路径**
+- 今日头条（toutiao.com）：仅提取 class="main-l" 下的链接，**通过 make_full_url() 处理相对路径**
+- 中国教育和科研计算机网（www.edu.cn）：仅提取 class="section2ContentRightTitle" 下的链接，**通过 make_full_url() 处理相对路径**
+- ai-bot.cn：仅提取 class="news-list" 下的链接，最多前 10 条，**通过 make_full_url() 处理相对路径**
+- 北京市政府（beijing.gov.cn）：仅提取 ul.list 下的链接，**通过 make_full_url() 处理相对路径**
+- 北京外国语大学系列：分别处理 div.page-list 与 ul.m-listb2，限制提取数量，**通过 make_full_url() 处理相对路径**
+- 通用策略：正则提取 href，**通过 make_full_url() 统一处理相对路径**，过滤无效扩展名与媒体文件，基于关键词、日期模式、链接长度筛选
+
+**更新** 所有网站适配策略现在都通过 make_full_url() 方法统一处理相对路径，消除重复代码
 
 **章节来源**
 - [news_extractor.py:208-683](file://news_extractor.py#L208-L683)
@@ -250,11 +272,77 @@ class NewsExtractor {
 ### BeautifulSoup HTML 解析与链接提取算法
 - 特定容器解析：先尝试定位特定容器，再在容器内提取 a 标签 href
 - 通用正则提取：使用正则表达式匹配 href 属性，统一处理相对路径
-- 绝对 URL 构建：根据 base_url 的末尾类型（index.html、index.shtml 等）进行规范化拼接
+- **集中化URL构建**：使用 make_full_url() 方法统一构建绝对URL，消除重复的相对路径解析代码
 - 去重与过滤：去重后进一步过滤非新闻链接，保留包含关键词、日期模式或较长链接的候选
+
+**更新** 新增集中化URL构建机制，通过 make_full_url() 统一处理相对路径解析
 
 **章节来源**
 - [news_extractor.py:208-683](file://news_extractor.py#L208-L683)
+
+### 集中化URL处理方法 make_full_url()
+
+**新增** 详细介绍 make_full_url() 方法的设计与实现
+
+#### 设计理念
+make_full_url() 方法是一个集中化的URL处理函数，旨在解决新闻提取过程中重复的相对路径解析代码问题。该方法统一处理各种相对路径场景，确保URL构建的一致性和准确性。
+
+#### 核心功能
+- **统一相对路径处理**：处理根相对路径（/）、父目录相对路径（../）、当前目录相对路径（./）和直接文件名相对路径
+- **基础URL格式化**：自动处理基础URL的末尾斜杠和index.html/index.shtml等文件名
+- **协议处理**：正确处理HTTP/HTTPS协议，确保生成的URL协议一致
+- **错误预防**：通过统一的处理逻辑，避免手动拼接URL时可能出现的格式错误
+
+#### 实现细节
+- **协议检查**：如果href已经是绝对URL（以http开头），直接返回
+- **基础URL清理**：移除基础URL末尾的index.html、index.shtml等文件名
+- **斜杠处理**：确保基础URL以斜杠结尾，便于相对路径拼接
+- **相对路径解析**：
+  - 根相对路径：提取协议和域名后拼接
+  - 父目录相对路径：直接拼接
+  - 当前目录相对路径：去掉"./"后拼接
+  - 直接文件名：直接拼接
+
+#### 使用场景
+- 教育部网站（moe.gov.cn）：通过 make_full_url() 处理相对路径
+- 北京外国语大学网站：通过 make_full_url() 处理相对路径
+- 智教说资讯网站：通过 make_full_url() 处理相对路径
+- 通用链接提取：通过 make_full_url() 处理相对路径
+
+#### 优势
+- **消除代码重复**：原有多处重复的相对路径解析代码被统一到一个方法中
+- **提高一致性**：所有相对路径处理逻辑保持一致，减少潜在错误
+- **增强可维护性**：URL处理逻辑集中在一处，便于修改和维护
+- **改进健壮性**：通过统一的处理流程，减少边界情况处理不当的问题
+
+```mermaid
+flowchart TD
+A["make_full_url(base_url, href)"] --> B{"href 是否以 http 开头"}
+B --> |是| C["直接返回 href"]
+B --> |否| D["处理基础URL格式"]
+D --> E{"base_url 是否以 index.html 结尾"}
+E --> |是| F["移除 '/index.html'"]
+E --> |否| G{"base_url 是否以 index.shtml 结尾"}
+G --> |是| H["移除 '/index.shtml' 或 '/index_1.shtml'"]
+G --> |否| I["保持 base_url 不变"]
+I --> J["确保 base_url 以 '/' 结尾"]
+J --> K["处理相对路径类型"]
+K --> L{"href 以什么开头"}
+L --> |"/"| M["根相对路径：提取协议和域名后拼接"]
+L --> |"../"| N["父目录相对路径：直接拼接"]
+L --> |"./"| O["当前目录相对路径：去掉 './' 后拼接"]
+L --> |"其他"| P["直接文件名：直接拼接"]
+M --> Q["返回完整URL"]
+N --> Q
+O --> Q
+P --> Q
+```
+
+**图表来源**
+- [news_extractor.py:963-990](file://news_extractor.py#L963-L990)
+
+**章节来源**
+- [news_extractor.py:963-990](file://news_extractor.py#L963-L990)
 
 ### 本地新闻提取库 gne_local
 
@@ -380,7 +468,10 @@ Utils --> Defaults
 - 参数与 Cookie：从环境变量解析查询参数与 cookies，注入到 WebDriver
 - 页面访问：访问 appmsgpublish 接口，等待页面加载
 - 数据解析：解析返回的 JSON，提取 publish_list 与 publish_info，组装链接列表
+- **增强的错误处理**：检查 base_resp.err_msg，当为 'invalid args' 时记录错误并返回空列表
 - 页面渲染：对 toutiao.com 增加延时与滚动，保存调试页面源码
+
+**更新** 新增参数错误处理机制，当API返回 'invalid args' 时优雅降级
 
 **章节来源**
 - [news_extractor.py:78-178](file://news_extractor.py#L78-L178)
@@ -510,7 +601,7 @@ subgraph "应用层"
 MAIN["main.py"]
 CLF["classify_existing_news.py"]
 SUM["summary_with_ark.py"]
-end
+END
 subgraph "核心模块"
 EX["news_extractor.py"]
 DB["database.py"]
@@ -560,6 +651,7 @@ GNE --> EXTRACTORS
 - 链接提取优化
   - 优先使用特定容器选择器，减少 DOM 遍历范围
   - 正则提取与去重结合，降低后续处理成本
+  - **集中化URL处理**：通过 make_full_url() 统一处理相对路径，减少重复计算
 - **本地提取器优化**
   - **gne_local 使用高效的 lxml 解析，比 bs4 更快**
   - **模块化设计减少不必要的处理步骤**
@@ -571,7 +663,7 @@ GNE --> EXTRACTORS
   - 链接缓存使用有序字典，限制最大容量，避免内存膨胀
   - 摘要与分类调用频率控制，避免触发限流
 
-**更新** 新增本地 gne_local 的性能优势分析
+**更新** 新增集中化URL处理的性能优势分析
 
 ## 故障排除指南
 - WebDriver 启动失败
@@ -584,6 +676,11 @@ GNE --> EXTRACTORS
 - 链接提取为空
   - 检查目标网站是否仍使用相同容器类名
   - 使用通用正则策略作为回退
+  - **检查 make_full_url() 方法是否正确处理相对路径**
+- **微信公众号参数错误**
+  - **检查 wechat_cookie 和 wechat_querystring 配置**
+  - **当出现 'invalid args' 错误时，系统会记录错误并返回空列表**
+  - **确保 fakeid、begin、count 参数正确**
 - **本地提取器异常**
   - **确认 gne_local 库文件完整性**
   - **检查噪声节点 XPath 是否正确**
@@ -592,6 +689,10 @@ GNE --> EXTRACTORS
   - **确认 gne_local 的 remove_noise_node 函数正常工作**
   - **检查页面源码是否包含预期结构**
   - **验证噪声节点列表是否覆盖所有评论区与广告**
+- **URL处理异常**
+  - **检查 make_full_url() 方法的输入参数**
+  - **验证基础URL格式是否正确**
+  - **确认相对路径类型是否被正确识别**
 - 摘要生成失败
   - 检查 ARK_API_KEY 是否正确配置
   - 确认网络可达与 API 地址可用
@@ -602,7 +703,7 @@ GNE --> EXTRACTORS
   - 检查表结构是否创建成功
   - 确认唯一约束冲突（标题/URL 唯一）
 
-**更新** 新增本地 gne_local 相关的故障排除指南
+**更新** 新增 make_full_url() 方法相关的故障排除指南
 
 **章节来源**
 - [news_extractor.py:43-77](file://news_extractor.py#L43-L77)
@@ -610,12 +711,13 @@ GNE --> EXTRACTORS
 - [news_extractor.py:208-683](file://news_extractor.py#L208-L683)
 - [news_extractor.py:685-750](file://news_extractor.py#L685-L750)
 - [news_extractor.py:759-893](file://news_extractor.py#L759-L893)
+- [news_extractor.py:963-990](file://news_extractor.py#L963-L990)
 - [database.py:20-52](file://database.py#L20-L52)
 
 ## 结论
-news_extractor.py 通过 Selenium 与 BeautifulSoup 的组合，实现了对多类网站的稳定抓取与链接提取；借助 **本地 gne_local 的增强内容抽取能力** 与百度火山方舟、百度智能云的 AI 能力，完成了摘要与分类的自动化处理。**本地 gne_local 库的引入提供了更准确的内容抽取和更好的自定义选项，替代了外部依赖，提高了系统的稳定性和可控性**。模块化设计与完善的日志体系使得系统具备良好的可维护性与可扩展性。建议持续关注目标网站结构变化，及时更新容器选择器与链接提取策略，以保持抓取稳定性。
+news_extractor.py 通过 Selenium 与 BeautifulSoup 的组合，实现了对多类网站的稳定抓取与链接提取；借助 **本地 gne_local 的增强内容抽取能力** 与百度火山方舟、百度智能云的 AI 能力，完成了摘要与分类的自动化处理。**本地 gne_local 库的引入提供了更准确的内容抽取和更好的自定义选项，替代了外部依赖，提高了系统的稳定性和可控性**。**新增的增强错误处理机制确保了系统在API参数错误时能够优雅降级，提供清晰的错误消息并返回空列表，避免了系统崩溃**。**集中化URL处理方法 make_full_url() 的引入消除了重复的相对路径解析代码，改进了URL构建的一致性，提高了代码的可维护性和健壮性**。模块化设计与完善的日志体系使得系统具备良好的可维护性与可扩展性。建议持续关注目标网站结构变化，及时更新容器选择器与链接提取策略，以保持抓取稳定性。
 
-**更新** 强调本地 gne_local 库的优势和对系统改进的重要作用
+**更新** 强调本地 gne_local 库的优势、make_full_url() 方法的价值，以及对系统改进的重要作用
 
 ## 附录
 
@@ -655,6 +757,8 @@ news_extractor.py 通过 Selenium 与 BeautifulSoup 的组合，实现了对多�
 - 页面渲染与链接提取
   - [news_extractor.py:180-206](file://news_extractor.py#L180-L206)
   - [news_extractor.py:208-683](file://news_extractor.py#L208-L683)
+- **集中化URL处理方法**
+  - [news_extractor.py:963-990](file://news_extractor.py#L963-L990)
 - **本地新闻提取库使用**
   - [news_extractor.py:685-708](file://news_extractor.py#L685-L708)
   - [gne_local/__init__.py:6-27](file://gne_local/__init__.py#L6-L27)
@@ -663,4 +767,34 @@ news_extractor.py 通过 Selenium 与 BeautifulSoup 的组合，实现了对多�
 - 分类调用
   - [news_extractor.py:759-893](file://news_extractor.py#L759-L893)
 
-**更新** 新增本地 gne_local 相关的代码示例路径
+**更新** 新增 make_full_url() 方法的代码示例路径
+
+### 错误处理机制详解
+- **微信公众号参数错误处理**
+  - **检测逻辑**：检查 data_json["base_resp"]["err_msg"] 是否等于 'invalid args'
+  - **错误记录**：使用 error() 记录详细的错误信息
+  - **优雅降级**：返回空列表 []，避免系统中断
+  - **用户指引**：提示用户检查 wechat_cookie 和 wechat_querystring 配置
+- **分类 API 错误处理**
+  - **状态码检查**：当 response.status_code != 200 时抛出异常
+  - **错误码检查**：当 result["error_code"] 存在时抛出异常
+  - **回退机制**：捕获异常后返回默认分类 "其他", "其他"
+- **URL处理错误处理**
+  - **输入验证**：检查 base_url 和 href 参数的有效性
+  - **格式处理**：自动处理基础URL的各种格式（index.html、index.shtml等）
+  - **相对路径识别**：正确识别和处理各种相对路径类型
+  - **协议一致性**：确保生成的URL协议与基础URL一致
+- **通用异常处理**
+  - **WebDriver 异常**：自动重置驱动并重新初始化
+  - **内容提取异常**：记录错误并返回 None
+  - **日志记录**：使用统一的 error() 函数记录详细错误信息
+
+**新增** 详细介绍系统的错误处理机制和优雅降级策略，包括新增的URL处理错误处理
+
+**章节来源**
+- [news_extractor.py:169-171](file://news_extractor.py#L169-L171)
+- [news_extractor.py:932-941](file://news_extractor.py#L932-L941)
+- [news_extractor.py:991-994](file://news_extractor.py#L991-L994)
+- [news_extractor.py:237-259](file://news_extractor.py#L237-L259)
+- [news_extractor.py:797-801](file://news_extractor.py#L797-L801)
+- [news_extractor.py:963-990](file://news_extractor.py#L963-L990)
