@@ -157,9 +157,9 @@ def main():
                 # 使用百度智能云NLP分类API获取分类
                 # 传递标题和内容作为参数
                 category, subcategory = extractor.classify_content(news_data["title"], summary)
-                if news_data["category"]!="":               
+                if "category" in news_data and news_data["category"]!="":               
                     category = news_data["category"]
-                    
+
                 # 保存到数据库，使用配置中的source名称(如果source为空)
                 source = news_data["source"]
                 if source=="":
