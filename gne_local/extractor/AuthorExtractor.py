@@ -1,4 +1,4 @@
-import re
+import re 
 from lxml.html import HtmlElement
 from gne_local.defaults import AUTHOR_PATTERN
 

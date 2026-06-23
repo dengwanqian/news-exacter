@@ -110,7 +110,11 @@ def main():
                 if not news_data:
                     continue
                 if author: # 列表页中有作者信息，覆盖提取到的作者信息
-                    news_data["author"]=author
+                    if "大学"  in author:
+                        news_data["source"]=author
+                        news_data["category"]="高校动态"
+                    else:
+                        news_data["author"]=author
 
                 # 0. 检查标题是否已存在（在生成摘要前检查，避免不必要的API调用）
                 if db.is_title_exists(news_data["title"]):
@@ -132,7 +136,7 @@ def main():
                 one_week_ago = current_time - datetime.timedelta(weeks=1)
                 two_weeks_ago = current_time - datetime.timedelta(weeks=2)
 
-                period_start = two_weeks_ago
+                period_start = one_week_ago
                 
                 
                 try:
@@ -153,11 +157,13 @@ def main():
                 # 使用百度智能云NLP分类API获取分类
                 # 传递标题和内容作为参数
                 category, subcategory = extractor.classify_content(news_data["title"], summary)
-                               
+                if news_data["category"]!="":               
+                    category = news_data["category"]
+                    
                 # 保存到数据库，使用配置中的source名称(如果source为空)
-                #source = news_data["source"]
-                #if source=="":
-                source = source_name
+                source = news_data["source"]
+                if source=="":
+                    source = source_name
                 print(f"保存新闻: {source}")
                 success = db.insert_news(
                     title=news_data["title"],

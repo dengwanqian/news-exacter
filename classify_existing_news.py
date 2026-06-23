@@ -274,8 +274,11 @@ class CategoryClassifier:
         if final_category == "待审" and subcategory.find("大学") != -1:
             final_category = "3.高校动态"
 
-        if author and len(author) <=3:
+        if author and len(author) <=3 and not source.startswith("智教说资讯") :
             final_category = "2.专家视点"
+        
+        if category == "高校动态":
+            final_category = "3.高校动态"
 
 
         # 对非"4.科技前沿"内容，使用大模型审核是否属于教育信息化

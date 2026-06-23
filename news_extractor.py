@@ -618,25 +618,62 @@ class NewsExtractor:
             else:
                 warning("未找到class='m-listb2'的ul标签", "extract")
                 return None  
-        elif "edudigital123.com" in base_url:
+        elif "edudigital123.com/article/" in base_url:
             info("智教说资讯网站特殊处理", "extract")
             soup = BeautifulSoup(page_source, "html.parser")
             
             # 查找class="listBox"的div标签
-            listbox_div = soup.find("div", class_="textbox")
+            listbox_div = soup.find("div", class_="newlistbox")
             if listbox_div:
-                a_tags = listbox_div.find_all("a", href=True)
-                for a_tag in a_tags:    
-                    href = a_tag["href"]
-                    if href and href not in ["#", "javascript:"]:
-                        full_url = self.make_full_url(base_url, href)
-                        links.append(full_url) 
-                        if len(links) > 100:
-                            break
-            
-            
+                a_tag = listbox_div.find("a", href=True)
+                if not a_tag:
+                    return None
+                href = a_tag["href"]    
+                # 构建完整URL
+                source_url = self.make_full_url(base_url, href)
 
+                page_source = self.get_rendered_page(source_url)
+                if not page_source:
+                    return None
+                
+                info("智教说资讯网站特殊处理", "extract")
+                soup = BeautifulSoup(page_source, "html.parser")
+            
+                # 查找class="listBox"的div标签
+                located_tag = soup.find("div", class_="textbox")
+            
+                if located_tag:
+                    # 提取该div下所有a标签的href属性
+                    a_tags = located_tag.find_all("a", href=True)
+                
+                    for a_tag in a_tags:
+                        grandparent=a_tag.parent.parent
+                        content_str=grandparent.find_previous_sibling("h3").text.strip() if grandparent else ""
+                        if not content_str or content_str not in ["系统上线与功能迭代","行业会议","工作推进","工作成果","工作总结"]:
+                            continue
 
+                        target_strong=a_tag.find_previous_sibling("strong")
+                        author = target_strong.text.strip() if target_strong else ""
+                        if "大学" not in author:
+                            continue
+                        href = a_tag["href"]
+                        if href and href not in ["#", "javascript:"]:
+                        
+                            # 构建完整URL
+                            full_url = self.make_full_url(base_url, href)
+
+                            links.append({"url":full_url,"author":author}) 
+                            if len(links) > 50:
+                                break
+                
+                    if links:
+                        info(f"智教说资讯网站提取到 {len(links)} 条链接", "extract")                
+                        return links
+            else:
+                warning("未找到class='newlistbox'的div标签", "extract")
+                return None        
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
         #  通用链接提取逻辑（适用于其他网站或教育部网站未找到moe-list的情况）
         href_pattern = re.compile(r'href=["\'](.*?)["\']')
         all_hrefs = href_pattern.findall(page_source)
@@ -714,10 +751,13 @@ class NewsExtractor:
         formats = [
             "%Y-%m-%d %H:%M:%S",
             "%Y-%m-%d %H:%M",
+            "%Y-%m-%d",
             "%Y年%m月%d日 %H:%M:%S",
             "%Y年%m月%d日 %H:%M",
+            "%Y年%m月%d日",
             "%Y/%m/%d %H:%M:%S",
             "%Y/%m/%d %H:%M",
+            "%Y/%m/%d",
             "%Y-%m-%dT%H:%M:%S",
         ]
         for fmt in formats:
