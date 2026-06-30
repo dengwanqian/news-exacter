@@ -625,10 +625,16 @@ class NewsExtractor:
             # 查找class="listBox"的div标签
             listbox_div = soup.find("div", class_="newlistbox")
             if listbox_div:
-                a_tag = listbox_div.find("a", href=True)
-                if not a_tag:
+                a_tags = listbox_div.find_all("a", href=True)
+                href = None
+                for a_tag in a_tags:
+                        if  a_tag.text and "动态周报"  in a_tag.text:
+                            href = a_tag["href"]
+                            break
+                if not href:
+                    warning("未找到包含'动态周报'的链接", "extract")
                     return None
-                href = a_tag["href"]    
+   
                 # 构建完整URL
                 source_url = self.make_full_url(base_url, href)
 
@@ -636,10 +642,10 @@ class NewsExtractor:
                 if not page_source:
                     return None
                 
-                info("智教说资讯网站特殊处理", "extract")
+                info("智教说资讯网站特殊处理:"+source_url, "extract")
                 soup = BeautifulSoup(page_source, "html.parser")
             
-                # 查找class="listBox"的div标签
+                # 查找class="textBox"的div标签
                 located_tag = soup.find("div", class_="textbox")
             
                 if located_tag:
@@ -648,6 +654,8 @@ class NewsExtractor:
                 
                     for a_tag in a_tags:
                         grandparent=a_tag.parent.parent
+                        if not (grandparent and grandparent.find_previous_sibling("h3")):
+                            continue
                         content_str=grandparent.find_previous_sibling("h3").text.strip() if grandparent else ""
                         if not content_str or content_str not in ["系统上线与功能迭代","行业会议","工作推进","工作成果","工作总结"]:
                             continue

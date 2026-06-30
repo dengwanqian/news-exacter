@@ -11,7 +11,7 @@ db = NewsDatabase("news.db")
 news_list = db.get_all_news_with_undecided(limit=200)
 news_list = sorted(news_list, key=lambda x: x[10], reverse=False)
 
-# 过滤近两周内的新闻
+# 过滤近一周内的新闻
 two_weeks_ago = datetime.datetime.now() - datetime.timedelta(weeks=2)
 one_weeks_ago = datetime.datetime.now() - datetime.timedelta(weeks=1)
 update_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
