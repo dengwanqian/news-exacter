@@ -186,7 +186,7 @@ class CategoryClassifier:
                 messages=[
                     {
                         "role": "system",
-                        "content": "你是一个教育信息化领域的内容审核专家。请判断给定的新闻内容是否属于教育信息化范畴。教育信息化包括：高校信息化、教育技术应用、智慧教育、在线教育、教育数字化转型、教育装备信息化、教育管理信息化、教育大数据、人工智能对教育的影响等。请只回答一个字：如果属于回答'是'，如果不属于回答'否'。"
+                        "content": "你是一个教育信息化领域的内容审核专家。请判断给定属于教育信息化范畴。教育信息化包括的新闻内容是否：高校信息化、教育技术应用、智慧教育、在线教育、教育数字化转型、教育装备信息化、教育管理信息化、教育大数据、人工智能对教育的影响等。请只回答一个字：如果属于回答'是'，如果不属于回答'否'。"
                     },
                     {
                         "role": "user",
@@ -240,7 +240,7 @@ class CategoryClassifier:
             final_category = "1.行业新闻"
             if not category in ["教育","科技"]:
                 final_category = "待审"
-        elif source== "高校信息化名家汇":
+        elif source== "智教说资讯":
                 final_category = "3.高校动态"
         elif source == "教育信息化100人" :
                 final_category = "2.专家视点"
@@ -274,8 +274,11 @@ class CategoryClassifier:
         if final_category == "待审" and subcategory.find("大学") != -1:
             final_category = "3.高校动态"
 
-        if author and len(author) <=3:
+        if author and len(author) <=3 and not source.startswith("智教说资讯") :
             final_category = "2.专家视点"
+        
+        if category == "高校动态":
+            final_category = "3.高校动态"
 
 
         # 对非"4.科技前沿"内容，使用大模型审核是否属于教育信息化

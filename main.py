@@ -78,11 +78,13 @@ def main():
 
             
             # 遍历新闻链接，提取内容
-            for link in news_links[:20]:  # 限制每次处理的新闻数量
+            for link in news_links[:50]:  # 限制每次处理的新闻数量
                 print(f"处理新闻: {link}")
+                author=""
 
-
-                
+                if type(link) != str:
+                    author=link["author"]
+                    link=link["url"]
                 # 检查链接是否在缓存中
                 if link in link_cache:
                     print(f"链接已处理过，跳过: {link}")
@@ -107,7 +109,13 @@ def main():
                 news_data = extractor.extract_news_content(news_page, link)
                 if not news_data:
                     continue
-                
+                if author: # 列表页中有作者信息，覆盖提取到的作者信息
+                    if "大学"  in author:
+                        news_data["source"]=author
+                        news_data["category"]="高校动态"
+                    else:
+                        news_data["author"]=author
+
                 # 0. 检查标题是否已存在（在生成摘要前检查，避免不必要的API调用）
                 if db.is_title_exists(news_data["title"]):
                     print(f"标题已存在，跳过: {news_data['title']}")
@@ -149,11 +157,13 @@ def main():
                 # 使用百度智能云NLP分类API获取分类
                 # 传递标题和内容作为参数
                 category, subcategory = extractor.classify_content(news_data["title"], summary)
-                               
+                if "category" in news_data and news_data["category"]!="":               
+                    category = news_data["category"]
+
                 # 保存到数据库，使用配置中的source名称(如果source为空)
-                #source = news_data["source"]
-                #if source=="":
-                source = source_name
+                source = news_data["source"]
+                if source=="":
+                    source = source_name
                 print(f"保存新闻: {source}")
                 success = db.insert_news(
                     title=news_data["title"],
