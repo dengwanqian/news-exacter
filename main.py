@@ -1,3 +1,5 @@
+from random import random
+
 from config import NEWS_SOURCES, DB_PATH, SELENIUM_TIMEOUT,FILTER_KEYWORDS
 from news_extractor import NewsExtractor
 from database import NewsDatabase
@@ -106,6 +108,8 @@ def main():
                     continue
                 
                 # 提取新闻内容
+                #等待一段时间
+                time.sleep(3)
                 news_data = extractor.extract_news_content(news_page, link)
                 if not news_data:
                     continue
@@ -137,6 +141,8 @@ def main():
                 two_weeks_ago = current_time - datetime.timedelta(weeks=2)
 
                 period_start = one_week_ago
+                #period_start = two_weeks_ago
+                                
                 
                 
                 try:
