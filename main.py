@@ -1,4 +1,4 @@
-from random import random
+import random
 
 from config import NEWS_SOURCES, DB_PATH, SELENIUM_TIMEOUT,FILTER_KEYWORDS
 from news_extractor import NewsExtractor
@@ -57,6 +57,8 @@ def main():
 
             news_links=[]
             if source_url.startswith("https://mp.weixin.qq.com/cgi-bin/appmsgpublish"):
+                continue  # 跳过微信公众号,因为公众号功能变化，无法获取文章链接了。
+                '''
                 # 从URL中提取fakeid
                 fakeid = source_url.split("fakeid=")[1]
 
@@ -65,6 +67,7 @@ def main():
                 if source_name == "中国青年报":
                     count=10
                 news_links = extractor.get_article_links(fakeid=fakeid, begin=0, count=count)
+                '''
             else:
                 # 获取渲染后的页面
                 page_source = extractor.get_rendered_page(source_url)
@@ -84,7 +87,7 @@ def main():
                 print(f"处理新闻: {link}")
                 author=""
 
-                if type(link) != str:
+                if type(link) != str: #特殊处理
                     author=link["author"]
                     link=link["url"]
                 # 检查链接是否在缓存中
@@ -109,17 +112,22 @@ def main():
                 
                 # 提取新闻内容
                 #等待一段时间
-                time.sleep(3)
+                #获取2到4秒的随机时间
+                seconds= random.uniform(2, 4)
+                time.sleep(seconds)
                 news_data = extractor.extract_news_content(news_page, link)
                 if not news_data:
                     continue
                 if author: # 列表页中有作者信息，覆盖提取到的作者信息
                     if "大学"  in author:
                         news_data["source"]=author
-                        news_data["category"]="高校动态"
                     else:
                         news_data["author"]=author
-
+                
+                if news_data["title"]:
+                    title=news_data["title"]
+                    if "中学" in title or "小学" in title or "幼" in title :
+                        continue
                 # 0. 检查标题是否已存在（在生成摘要前检查，避免不必要的API调用）
                 if db.is_title_exists(news_data["title"]):
                     print(f"标题已存在，跳过: {news_data['title']}")

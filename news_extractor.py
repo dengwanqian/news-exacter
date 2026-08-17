@@ -12,6 +12,7 @@ from selenium.common.exceptions import InvalidSessionIdException, WebDriverExcep
 from webdriver_manager.chrome import ChromeDriverManager
 from bs4 import BeautifulSoup
 from gne_local import GeneralNewsExtractor
+import undetected_chromedriver as uc
 import time
 import re
 
@@ -24,6 +25,7 @@ class NewsExtractor:
     def __init__(self, timeout=30):
         self.timeout = timeout
         self.driver = self.init_driver()
+        self.ictdedu_driver = None  # ictdedu.cn专用driver（需非headless模式绕过WAF）
         self.extractor = GeneralNewsExtractor()
 
         # 加载环境变量
@@ -50,7 +52,8 @@ class NewsExtractor:
         chrome_options.add_argument("--disable-gpu")
         
         # 添加反检测措施
-        chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36")
+        # 更新User-Agent与当前Chrome版本匹配
+        chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.7922.71 Safari/537.36")
         chrome_options.add_argument("--disable-blink-features=AutomationControlled")
         chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
         chrome_options.add_experimental_option("useAutomationExtension", False)
@@ -77,6 +80,38 @@ class NewsExtractor:
         driver.set_page_load_timeout(self.timeout)
         driver.implicitly_wait(10)
         return driver
+
+    def _init_ictdedu_driver(self):
+        """初始化ictdedu.cn专用driver，使用undetected_chromedriver非headless模式绕过瑞数WAF"""
+        try:
+            options = uc.ChromeOptions()
+            options.add_argument('--no-sandbox')
+            options.add_argument('--disable-dev-shm-usage')
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            driver_path = os.path.join(base_dir, "chromedriver.exe")
+            driver = uc.Chrome(
+                driver_executable_path=driver_path,
+                options=options
+            )
+            driver.set_page_load_timeout(self.timeout)
+            info("ictdedu.cn专用WebDriver初始化完成", "selenium")
+            return driver
+        except Exception as e:
+            error(f"ictdedu.cn专用WebDriver初始化失败: {e}", "selenium")
+            return None
+
+    def _ensure_ictdedu_driver(self):
+        """确保ictdedu专用driver可用"""
+        if self.ictdedu_driver is None:
+            self.ictdedu_driver = self._init_ictdedu_driver()
+        else:
+            try:
+                self.ictdedu_driver.title
+            except Exception:
+                self._close_ictdedu_driver()
+                self.ictdedu_driver = self._init_ictdedu_driver()
+        return self.ictdedu_driver
+
     def get_article_links(self, fakeid="Mzg4MTAwMzgxNw==", begin=0,count=5,url="https://mp.weixin.qq.com/cgi-bin/appmsgpublish"):
         #url = "https://mp.weixin.qq.com/cgi-bin/appmsgpublish"
         params = {}
@@ -225,20 +260,29 @@ class NewsExtractor:
                 debug(f"正在获取页面: {url} (尝试 {attempt + 1}/{max_retries})")
                 self.driver.get(url)
                 
+                # 针对ictdedu.cn使用专用driver（绕过瑞数WAF）
+                if "www.ictdedu.cn" in url:
+                    driver = self._ensure_ictdedu_driver()
+                    if not driver:
+                        error("ictdedu.cn专用driver不可用", "selenium")
+                        return None
+                    debug(f"使用ictdedu专用driver获取页面: {url}")
+                    driver.get(url)
+                    time.sleep(15)
+                    for i in range(1):
+                        driver.execute_script("window.scrollBy(0, 1000);")
+                        time.sleep(4)
+                    #with open("ictdedu_page.html", "w", encoding="utf-8") as f:
+                        #f.write(driver.page_source)
+                    return driver.page_source
                 # 针对今日头条增加更长的等待时间
-                if "toutiao.com" in url:
-
+                elif "toutiao.com" in url:
                     time.sleep(15)  # 更长的等待时间
                     for i in range(1):
                         self.driver.execute_script("window.scrollBy(0, 1000);")
                         time.sleep(4)
                 else:
                     time.sleep(10)  # 普通网站的等待时间
-                
-                # 保存页面源代码以便调试
-                if "toutiao.com" in url:
-                    with open("toutiao_page.html", "w", encoding="utf-8") as f:
-                        f.write(self.driver.page_source)
                 
                 return self.driver.page_source
             except InvalidSessionIdException:
@@ -323,30 +367,7 @@ class NewsExtractor:
                     if href and href not in ["#", "javascript:"]:
                         
                         # 构建完整URL
-                        if href.startswith("http"):
-                            full_url = href
-                        else:
-                            # 确保base_url格式正确
-                            if base_url.endswith("/index.html"):
-                                base_url = base_url[:-11]
-                            
-                            # 确保base_url以/结尾
-                            if not base_url.endswith("/"):
-                                base_url += "/"
-                            
-                            # 处理各种相对路径
-                            if href.startswith("/"):
-                                # 根相对路径
-                                full_url = base_url.split("://")[0] + "://" + base_url.split("://")[1].split("/")[0] + href
-                            elif href.startswith("../"):
-                                # 父目录相对路径
-                                full_url = base_url + href
-                            elif href.startswith("./"):
-                                # 当前目录相对路径
-                                full_url = base_url + href[2:]
-                            else:
-                                # 直接以文件名开头的相对路径
-                                full_url = base_url + href
+                        full_url = self.make_full_url(base_url, href)
                         
                         links.append(full_url)
                 
@@ -360,62 +381,34 @@ class NewsExtractor:
                 return None 
 
         
-        # 3. 针对edu.cn网站的特殊处理 - 只提取class="section2ContentRightTitle"的div下的链接
-        elif "www.edu.cn" in base_url:
-            info("www.edu.cn网站特殊处理", "extract")
-
+        # 3. 针对www.ictdedu.cn/news/网站的特殊处理 
+        elif "www.ictdedu.cn/news/" in base_url:
+            info("www.ictdedu.cn/news/网站特殊处理", "extract")
             soup = BeautifulSoup(page_source, "html.parser")
-            
-            # 查找所有class="section2ContentRightTitle"的div标签
-            section_divs = soup.find_all("div", class_="section2ContentRightTitle")
-            
-            if section_divs:
-                
-                for section_div in section_divs:
-                    # 提取该div下所有a标签的href属性
-                    a_tags = section_div.find_all("a", href=True)                    
+
+            # 提取新闻列表区域 <div class="list"> 下 <ul class="media"> 中的链接
+            list_div = soup.find("div", class_="list")
+            if list_div:
+                media_ul = list_div.find("ul", class_="media")
+                if media_ul:
+                    a_tags = media_ul.find_all("a", href=True)
                     for a_tag in a_tags:
                         href = a_tag["href"]
-                        if href and href not in ["#", "javascript:"]:
-                            
-                            # 构建完整URL
-                            if href.startswith("http"):
-                                full_url = href
-                            else:
-                                # 确保base_url格式正确
-                                if base_url.endswith("/index.shtml"):
-                                    base_url = base_url[:-12]
-                                elif base_url.endswith("/index_1.shtml"): 
-                                    base_url = base_url[:-15]
-                                
-                                # 确保base_url以/结尾
-                                if not base_url.endswith("/"):
-                                    base_url += "/"
-                                
-                                # 处理各种相对路径
-                                if href.startswith("/"):
-                                    # 根相对路径
-                                    full_url = base_url.split("://")[0] + "://" + base_url.split("://")[1].split("/")[0] + href
-                                elif href.startswith("../"):
-                                    # 父目录相对路径
-                                    full_url = base_url + href
-                                elif href.startswith("./"):
-                                    # 当前目录相对路径
-                                    full_url = base_url + href[2:]
-                                else:
-                                    # 直接以文件名开头的相对路径
-                                    full_url = base_url + href
-                            
-                            links.append(full_url)
-                
-                if links:
-                    # 去重
-                    unique_links = list(set(links))
-                    info(f"edu.cn网站提取到 {len(unique_links)} 条链接", "extract")
-                    return unique_links
+                        if href and href.startswith("http") and ".shtml" in href:
+                            links.append(href)
+                            if len(links) >= 20:
+                                break
+                        
+                    if links:
+                        unique_links = list(set(links))
+                        info(f"www.ictdedu.cn提取到 {len(unique_links)} 条链接", "extract")
+                        return unique_links
+                else:
+                    warning("未找到class='media'的ul标签", "extract")
             else:
-                warning("未找到class='section2ContentRightTitle'的div标签", "extract")
-                return None
+                warning("未找到class='list'的div标签", "extract")
+            return []
+
         
         # 4. 针对ai-bot.cn网站的特殊处理 - 只提取class="news-item"的div下的前10条链接
         elif "ai-bot.cn" in base_url:
@@ -443,31 +436,7 @@ class NewsExtractor:
                         if href and href not in ["#", "javascript:"]:
                             
                             # 构建完整URL
-                            if href.startswith("http"):
-                                full_url = href
-                            else:
-                                # 确保base_url格式正确
-                                if base_url.endswith("/index.html"):
-                                    base_url = base_url[:-11]
-                                
-                                # 确保base_url以/结尾
-                                if not base_url.endswith("/"):
-                                    base_url += "/"
-                                
-                                # 处理各种相对路径
-                                if href.startswith("/"):
-                                    # 根相对路径
-                                    full_url = base_url.split("://")[0] + "://" + base_url.split("://")[1].split("/")[0] + href
-                                elif href.startswith("../"):
-                                    # 父目录相对路径
-                                    full_url = base_url + href
-                                elif href.startswith("./"):
-                                    # 当前目录相对路径
-                                    full_url = base_url + href[2:]
-                                else:
-                                    # 直接以文件名开头的相对路径
-                                    full_url = base_url + href
-                            
+                            full_url = self.make_full_url(base_url, href)
                             links.append(full_url)
                             print(full_url)
                             processed_count += 1
@@ -556,31 +525,7 @@ class NewsExtractor:
                     if href and href not in ["#", "javascript:"]:
                         
                         # 构建完整URL
-                        if href.startswith("http"):
-                            full_url = href
-                        else:
-                            # 确保base_url格式正确
-                            if base_url.endswith("/index.html"):
-                                base_url = base_url[:-11]
-                            
-                            # 确保base_url以/结尾
-                            if not base_url.endswith("/"):
-                                base_url += "/"
-                            
-                            # 处理各种相对路径
-                            if href.startswith("/"):
-                                # 根相对路径
-                                full_url = base_url.split("://")[0] + "://" + base_url.split("://")[1].split("/")[0] + href
-                            elif href.startswith("../"):
-                                # 父目录相对路径
-                                full_url = base_url + href
-                            elif href.startswith("./"):
-                                # 当前目录相对路径
-                                full_url = base_url + href[2:]
-                            else:
-                                # 直接以文件名开头的相对路径
-                                full_url = base_url + href
-                        
+                        full_url = self.make_full_url(base_url, href)
                         links.append(full_url)
                         if len(links) > 10:
                             break
@@ -700,33 +645,7 @@ class NewsExtractor:
                 continue
                 
             # 构建完整URL
-            if href.startswith("http"):
-                full_url = href
-            else:
-                # 处理各种相对路径
-                if base_url.endswith("/index.html"):
-                    base_url = base_url[:-11]
-                elif base_url.endswith("/index_1.htm"):
-                    base_url = base_url[:-13]
-                
-                # 确保base_url以/结尾，便于拼接相对路径
-                if not base_url.endswith("/"):
-                    base_url += "/"
-                
-                # 处理相对路径
-                if href.startswith("/"):
-                    # 根相对路径
-                    full_url = base_url.split("://")[0] + "://" + base_url.split("://")[1].split("/")[0] + href
-                elif href.startswith("../"):
-                    # 父目录相对路径
-                    full_url = base_url + href
-                elif href.startswith("./"):
-                    # 当前目录相对路径
-                    full_url = base_url + href[2:]
-                else:
-                    # 直接以文件名开头的相对路径
-                    full_url = base_url + href
-            
+            full_url = self.make_full_url(base_url, href)            
             links.append(full_url)
         
         # 3. 过滤重复链接
@@ -820,6 +739,7 @@ class NewsExtractor:
                     news_data["author"] = ""
             if news_data["source"] and not news_data["author"]:
                 news_data["author"] = "source:" + news_data["source"]
+                news_data["source"] = ""
             return news_data
         except Exception as e:
             import traceback
@@ -857,7 +777,7 @@ class NewsExtractor:
                 {"role": "user", "content": f"请为下面的文章生成摘要：\n{article}。不要生成多余内容如字数统计等。"}
             ],
             temperature=0.2,  # 越低越稳定、越贴近原文
-            max_tokens=400    # 摘要长度上限
+            max_tokens=200    # 摘要长度上限
         )
         # 输出结果
         summary = response.choices[0].message.content
@@ -867,7 +787,38 @@ class NewsExtractor:
         else:
             return ""
 
+    def _close_ictdedu_driver(self):
+        """安全关闭ictdedu专用driver，直接杀进程避免__del__报错"""
+        if self.ictdedu_driver is None:
+            return
+        try:
+            # 直接杀掉浏览器进程
+            service = getattr(self.ictdedu_driver, 'service', None)
+            if service:
+                proc = getattr(service, 'process', None)
+                if proc:
+                    proc.kill()
+        except Exception:
+            pass
+        try:
+            # 杀掉浏览器进程
+            browser_pid = getattr(self.ictdedu_driver, 'browser_pid', None)
+            if browser_pid:
+                import signal
+                os.kill(browser_pid, signal.SIGTERM)
+        except Exception:
+            pass
+        try:
+            # 用空函数替换quit，阻止__del__再次调用原始quit导致OSError
+            self.ictdedu_driver.quit = lambda: None
+        except Exception:
+            pass
+        self.ictdedu_driver = None
+
     def close(self):
+        # 关闭ictdedu专用driver
+        self._close_ictdedu_driver()
+        # 关闭主driver
         if self.driver:
             try:
                 self.driver.quit()
@@ -1023,6 +974,16 @@ class NewsExtractor:
                             # 确保base_url格式正确
                             if base_url.endswith("/index.html"):
                                 base_url = base_url[:-11]
+                            elif base_url.endswith("/index.htm"):
+                                base_url = base_url[:-10]
+                            elif base_url.endswith("/index_1.htm"):
+                                base_url = base_url[:-12]
+                            elif base_url.endswith("/index_1.html"):
+                                base_url = base_url[:-13]
+                            elif base_url.endswith("/index.shtml"):
+                                base_url = base_url[:-12]
+                            elif base_url.endswith("/index_1.shtml"): 
+                                    base_url = base_url[:-14]
                             
                             # 确保base_url以/结尾
                             if not base_url.endswith("/"):

@@ -242,6 +242,12 @@ class CategoryClassifier:
                 final_category = "待审"
         elif source== "智教说资讯":
                 final_category = "3.高校动态"
+        elif source == "中国教育信息化网":
+                final_category = "1.行业新闻"
+                if any(keyword in title for keyword in ["时评","聚焦","建议","主任谈","专家","文章"]):
+                    final_category = "2.专家视点"  
+                elif "大学" in title or "学院" in title:
+                    final_category = "3.高校动态"
         elif source == "教育信息化100人" :
                 final_category = "2.专家视点"
         elif source == "教育信息化资讯":

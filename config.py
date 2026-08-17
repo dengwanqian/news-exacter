@@ -52,20 +52,26 @@ NEWS_SOURCES = [
         "url":"https://itc.bfsu.edu.cn/xwgg/xwdt.htm", 
         "source":"北京外国语大学信息技术中心"
     },
+    
     {
         "url":"https://edudigital123.com/article/",  
         "source":"智教说资讯"
+    },
+    
+    {
+        "url":"https://www.ictdedu.cn/news/",  
+        "source":"中国教育信息化网"
     }
+
 ]
 
 
 NEWS_SOURCES0 = [
 
     {
-        "url":"https://edudigital123.com/article/",  
-        "source":"智教说资讯"
+        "url":"https://www.ictdedu.cn/news/",  
+        "source":"中国教育信息化网"
     }
-
 ]
 
 # 数据库配置
