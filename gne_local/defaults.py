@@ -47,7 +47,7 @@ DATETIME_PATTERN = [
     "(\d{1,2}月\d{1,2}日)"
 ]
 
-TITLE_HTAG_XPATH = '//h1//text() | //h2//text() | //h3//text() | //h4//text()'
+TITLE_HTAG_XPATH = '//h1//text() | //h2//text() '
 
 TITLE_SPLIT_CHAR_PATTERN = '[_]'
 
