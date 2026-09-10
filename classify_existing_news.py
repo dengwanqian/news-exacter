@@ -289,6 +289,8 @@ class CategoryClassifier:
 
         # 对非"4.科技前沿"内容，使用大模型审核是否属于教育信息化
         if final_category not in ["4.科技前沿"]:
+            #sleep 5秒
+            time.sleep(5)
             is_edu_info = self.check_education_info_by_llm(title, content)
             if not is_edu_info:
                 final_category = "9.大模型排除"

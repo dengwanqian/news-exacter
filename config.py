@@ -1,5 +1,5 @@
 # 信息来源URL列表
-NEWS_SOURCES = [
+NEWS_SOURCES0 = [
     {
         "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=MzIzNjc1NzUzMw==",
         "source":"量子位"
@@ -53,24 +53,24 @@ NEWS_SOURCES = [
         "source":"北京外国语大学信息技术中心"
     },
     
-    {
-        "url":"https://edudigital123.com/article/",  
-        "source":"智教说资讯"
-    },
     
     {
         "url":"https://www.ictdedu.cn/news/",  
         "source":"中国教育信息化网"
+    },
+        {
+        "url":"https://edudigital123.com/article/?page=1&limit=50",  
+        "source":"智教说资讯"
     }
 
 ]
 
 
-NEWS_SOURCES0 = [
+NEWS_SOURCES = [
 
     {
-        "url":"https://www.ictdedu.cn/news/",  
-        "source":"中国教育信息化网"
+        "url":"https://edudigital123.com/article/?page=1&limit=50",  
+        "source":"智教说资讯"
     }
 ]
 

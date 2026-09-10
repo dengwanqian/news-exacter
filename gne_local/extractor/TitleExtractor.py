@@ -18,7 +18,7 @@ class TitleExtractor:
         title_list = element.xpath('//title/text()')
         if not title_list:
             return ''
-        title = re.split(TITLE_SPLIT_CHAR_PATTERN, title_list[0])
+        title =re.split(TITLE_SPLIT_CHAR_PATTERN, title_list[0])
         if title:
             return title[0]
         else:
@@ -29,8 +29,12 @@ class TitleExtractor:
         if not title_list:
             return ''
         return title_list[0]
+        
 
     def extract(self, element: HtmlElement, title_xpath: str = ''):
         title_xpath = title_xpath or config.get('title', {}).get('xpath')
-        title = self.extract_by_htag(element) or self.extract_by_xpath(element, title_xpath) or self.extract_by_title(element) 
+        title = self.extract_by_title(element) or self.extract_by_htag(element) or self.extract_by_xpath(element, title_xpath) 
+        title = title.strip()
+        #移除所有的\n\r\t
+        title = re.sub(r'\s+', '', title)   
         return title

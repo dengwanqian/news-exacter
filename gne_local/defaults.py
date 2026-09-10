@@ -47,9 +47,10 @@ DATETIME_PATTERN = [
     "(\d{1,2}月\d{1,2}日)"
 ]
 
-TITLE_HTAG_XPATH = '//h1//text() | //h2//text() '
+TITLE_HTAG_XPATH = '//h1//text() | //h2//text() | //h3//text()'
 
-TITLE_SPLIT_CHAR_PATTERN = '[_]'
+
+TITLE_SPLIT_CHAR_PATTERN = '[_|]'
 
 USELESS_TAG = ['style', 'script', 'link', 'video', 'iframe', 'source', 'picture', 'header', 'blockquote']
 

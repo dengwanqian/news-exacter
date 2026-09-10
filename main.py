@@ -57,6 +57,7 @@ def main():
 
             news_links=[]
             if source_url.startswith("https://mp.weixin.qq.com/cgi-bin/appmsgpublish"):
+                print(f"微信公众号信息现在不可搜，略过。")
                 continue  # 跳过微信公众号,因为公众号功能变化，无法获取文章链接了。
                 '''
                 # 从URL中提取fakeid
@@ -119,14 +120,21 @@ def main():
                 if not news_data:
                     continue
                 if author: # 列表页中有作者信息，覆盖提取到的作者信息
-                    if "大学"  in author:
+                    if "学院" in author or "学校" in author:
+                        continue
+                    elif "大学"  in author:
                         news_data["source"]=author
                     else:
                         news_data["author"]=author
-                
+                if news_data["author"]:
+                    if "学院" in news_data["author"] or "学校" in news_data["author"]:
+                        continue
+                if news_data["source"]:
+                    if "学院" in news_data["source"] or "学校" in news_data["source"]:
+                        continue
                 if news_data["title"]:
                     title=news_data["title"]
-                    if "中学" in title or "小学" in title or "幼" in title :
+                    if "中学" in title or "小学" in title or "幼" in title or "县" in title:
                         continue
                 # 0. 检查标题是否已存在（在生成摘要前检查，避免不必要的API调用）
                 if db.is_title_exists(news_data["title"]):
@@ -165,8 +173,11 @@ def main():
                     # 如果发布时间解析失败，跳过时间检查
                     pass
                 
-                # 生成内容摘要（现在只有标题不存在时才会调用AI生成摘要）
+                # 生成内容摘要
                 summary = extractor.summarize_content(news_data["content"])
+                if source_name == "中国教育信息化网" or source_name == "北京市政府官网-北京要闻":
+                    if "中学" in summary or "小学" in summary or "幼儿" in summary or "中心学校" in summary or "基础教育" in summary:
+                        continue
                 
                 # 使用百度智能云NLP分类API获取分类
                 # 传递标题和内容作为参数

@@ -81,18 +81,55 @@ class NewsExtractor:
         driver.implicitly_wait(10)
         return driver
 
+    def _get_chrome_major_version(self):
+        """自动检测本机Chrome浏览器主版本号"""
+        try:
+            import subprocess
+            # Windows: 从注册表获取Chrome版本
+            import winreg
+            for path in [
+                r"SOFTWARE\Google\Chrome\BLBeacon",
+                r"SOFTWARE\WOW6432Node\Google\Chrome\BLBeacon",
+            ]:
+                try:
+                    key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, path)
+                    version, _ = winreg.QueryValueEx(key, "version")
+                    winreg.CloseKey(key)
+                    major = int(version.split(".")[0])
+                    info(f"检测到本机Chrome版本: {version} (主版本: {major})", "selenium")
+                    return major
+                except (FileNotFoundError, OSError):
+                    continue
+            # 备用方案: 直接运行chrome --version
+            for chrome_path in [
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+            ]:
+                if os.path.exists(chrome_path):
+                    result = subprocess.run([chrome_path, "--version"], capture_output=True, text=True, timeout=5)
+                    # 输出格式: "Google Chrome 151.0.7922.137"
+                    version_str = result.stdout.strip().split()[-1]
+                    major = int(version_str.split(".")[0])
+                    info(f"检测到本机Chrome版本: {version_str} (主版本: {major})", "selenium")
+                    return major
+        except Exception as e:
+            warning(f"自动检测Chrome版本失败: {e}", "selenium")
+        return None
+
     def _init_ictdedu_driver(self):
         """初始化ictdedu.cn专用driver，使用undetected_chromedriver非headless模式绕过瑞数WAF"""
         try:
             options = uc.ChromeOptions()
             options.add_argument('--no-sandbox')
             options.add_argument('--disable-dev-shm-usage')
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            driver_path = os.path.join(base_dir, "chromedriver.exe")
-            driver = uc.Chrome(
-                driver_executable_path=driver_path,
-                options=options
-            )
+            # 不指定本地chromedriver路径，让uc自动管理driver
+            # uc需要打补丁修改chromedriver二进制文件，本地文件可能因权限问题无法写入
+            # 自动检测本机Chrome版本，确保下载匹配的ChromeDriver
+            chrome_major = self._get_chrome_major_version()
+            uc_kwargs = {"options": options}
+            if chrome_major:
+                uc_kwargs["version_main"] = chrome_major
+            driver = uc.Chrome(**uc_kwargs)
             driver.set_page_load_timeout(self.timeout)
             info("ictdedu.cn专用WebDriver初始化完成", "selenium")
             return driver
@@ -571,6 +608,7 @@ class NewsExtractor:
                 warning("未找到class='m-listb2'的ul标签", "extract")
                 return None  
         elif "edudigital123.com/article/" in base_url:
+            '''
             info("智教说资讯网站特殊处理", "extract")
             soup = BeautifulSoup(page_source, "html.parser")
             
@@ -632,7 +670,41 @@ class NewsExtractor:
             else:
                 warning("未找到class='newlistbox'的div标签", "extract")
                 return None        
+            '''
 
+            info("智教说资讯网站链接处理", "extract")
+            soup = BeautifulSoup(page_source, "html.parser")
+            
+            # 查找class="listBox"的div标签
+            listbox_div = soup.find("div", class_="newlistbox")
+
+            if listbox_div:
+                # 提取该div下所有a标签的href属性
+                a_tags = listbox_div.find_all("a", href=True)
+
+                for a_tag in a_tags:
+                    href = a_tag["href"]
+                    if href and href not in ["#", "javascript:"] :
+                        if "/article" not in href:
+                            continue
+                        # 构建完整URL
+                        full_url = self.make_full_url(base_url, href)
+ 
+                        links.append(full_url) 
+                        if len(links) > 50:
+                            break
+                
+                if links:
+                    # 去重
+                    unique_links = list(set(links))
+                    info(f"智教说资讯网站提取到 {len(unique_links)} 条链接", "extract")                
+                    return unique_links
+            else:
+                warning("未找到class='newlistbox'的div标签", "extract")
+                return None  
+
+
+                        
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           
         #  通用链接提取逻辑（适用于其他网站或教育部网站未找到moe-list的情况）
         href_pattern = re.compile(r'href=["\'](.*?)["\']')
@@ -733,9 +805,11 @@ class NewsExtractor:
             if news_data["author"]:
                 value=news_data["author"]
                 #如果value包含教育、报、政府、官网等字样
-                if value and any(keyword in value for keyword in ["教育", "报", "政府", "官网","新闻"]):
+                if value and any(keyword in value for keyword in ["教育", "报", "政府", "官网","新闻","大学"]):
                     news_data["author"] = "source:" + value    
                 if value.startswith("点击"):
+                    news_data["author"] = ""
+                if news_data["url"].startswith("https://edudigital123.com/article"):
                     news_data["author"] = ""
             if news_data["source"] and not news_data["author"]:
                 news_data["author"] = "source:" + news_data["source"]
@@ -748,7 +822,7 @@ class NewsExtractor:
             return None
 
     def summarize_content(self, content):
-        """生成新闻内容摘要，优先使用百度新闻摘要API，失败则使用备用方案"""
+        """生成新闻内容摘要，使用doubao-seed-2-0-pro-260215"""
         if not content:
             return ""
         
