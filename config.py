@@ -1,5 +1,5 @@
 # 信息来源URL列表
-NEWS_SOURCES0 = [
+NEWS_SOURCES = [
     {
         "url":"https://mp.weixin.qq.com/cgi-bin/appmsgpublish?fakeid=MzIzNjc1NzUzMw==",
         "source":"量子位"
@@ -66,7 +66,7 @@ NEWS_SOURCES0 = [
 ]
 
 
-NEWS_SOURCES = [
+NEWS_SOURCES0 = [
 
     {
         "url":"https://edudigital123.com/article/?page=1&limit=50",  

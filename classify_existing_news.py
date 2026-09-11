@@ -11,6 +11,7 @@ import os
 from datetime import datetime
 from openai import OpenAI
 from logger import info, debug, error, warning
+import time
 
 
 class NewsDatabase:
