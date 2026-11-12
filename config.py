@@ -69,8 +69,12 @@ NEWS_SOURCES = [
 NEWS_SOURCES0 = [
 
     {
-        "url":"https://edudigital123.com/article/?page=1&limit=50",  
-        "source":"智教说资讯"
+        "url":"http://www.moe.gov.cn/jyb_xwfb/gzdt_gzdt/index.html",  
+        "source":"教育部官网-工作动态"
+    },
+    {
+        "url":"http://www.moe.gov.cn/jyb_xwfb/s271/index.html",  
+        "source":"教育部官网-政策解读"
     }
 ]
 

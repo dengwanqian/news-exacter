@@ -52,25 +52,21 @@ class NewsExtractor:
         chrome_options.add_argument("--disable-gpu")
         
         # 添加反检测措施
-        # 更新User-Agent与当前Chrome版本匹配
-        chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.7922.71 Safari/537.36")
         chrome_options.add_argument("--disable-blink-features=AutomationControlled")
         chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
         chrome_options.add_experimental_option("useAutomationExtension", False)
         
-        # 直接指定驱动路径，避免网络下载
-        # 使用脚本所在目录的绝对路径，确保在任何工作目录下都能找到驱动
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        driver_path = os.path.join(base_dir, "chromedriver.exe")
-        
         try:
-            # 尝试Selenium 4.x的方式
-            from selenium.webdriver.chrome.service import Service
+            # 使用webdriver-manager自动检测Chrome版本并下载匹配的chromedriver
+            info("使用webdriver-manager自动管理chromedriver版本", "selenium")
+            service = Service(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=chrome_options)
+        except Exception as e:
+            error(f"WebDriver初始化失败: {e}，尝试使用本地chromedriver兜底", "selenium")
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            driver_path = os.path.join(base_dir, "chromedriver.exe")
             service = Service(driver_path)
             driver = webdriver.Chrome(service=service, options=chrome_options)
-        except TypeError:
-            # 如果失败，使用Selenium 3.x的方式
-            driver = webdriver.Chrome(executable_path=driver_path, chrome_options=chrome_options)
         
         # 进一步反检测
         driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
@@ -287,7 +283,64 @@ class NewsExtractor:
         info("WebDriver 重新初始化完成", "selenium")
         return True
 
+    @staticmethod
+    def _is_blank_page(page_source):
+        """判断渲染结果是否为空壳页面（被反爬拦截或加载未完成时body没有内容）
+
+        需要同时满足“几乎没有可见文字”和“body内没有实际元素”两个条件，
+        避免把正常但简短的页面误判为空白。
+        """
+        if not page_source:
+            return True
+        body_match = re.search(r"<body[^>]*>(.*?)</body>", page_source, re.S | re.I)
+        inner_html = body_match.group(1) if body_match else page_source
+        # 脚本和样式里的文字不是可见内容，先剔除
+        inner_html = re.sub(r"<(script|style|noscript)[^>]*>.*?</\1>", "", inner_html, flags=re.S | re.I)
+        visible_text = re.sub(r"<[^>]*>", "", inner_html)
+        element_count = len(re.findall(r"<[a-zA-Z][^>]*>", inner_html))
+        return len(visible_text.strip()) < 20 and element_count == 0
+
+    # 这些来源是服务端渲染的纯静态页面，且会被 Chrome 的 HTTPS-First 拦掉（见 _fetch_static_page 说明），
+    # 因此不走浏览器，直接 HTTP 抓取
+    STATIC_FETCH_HOSTS = ("www.moe.gov.cn",)
+
+    def _fetch_static_page(self, url):
+        """不启动浏览器，直接用HTTP请求获取静态页面源码
+
+        教育部官网的https端会用302把访问者跳回http，而Chrome在导航阶段就把http升级成https，
+        随后把这条“不安全重定向”拦截掉（net::ERR_BLOCKED_BY_CLIENT），渲染结果只剩空壳页面，
+        所以这类页面绕过浏览器抓取。
+        """
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "zh-CN,zh;q=0.9"
+        }
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                debug(f"正在静态获取页面: {url} (尝试 {attempt + 1}/{max_retries})", "http")
+                response = requests.get(url, headers=headers, timeout=20)
+                if response.status_code == 200:
+                    # 响应头没声明charset时requests按ISO-8859-1解码，中文会变乱码，这里按页面自身的UTF-8处理
+                    if "charset" not in response.headers.get("Content-Type", "").lower():
+                        response.encoding = "utf-8"
+                    return response.text
+                warning(f"静态获取返回状态码 {response.status_code}: {url} (尝试 {attempt + 1}/{max_retries})", "http")
+            except requests.RequestException as e:
+                error(f"静态获取失败 {url}: {e} (尝试 {attempt + 1}/{max_retries})", "http")
+            if attempt < max_retries - 1:
+                time.sleep(3)
+        return None
+
     def get_rendered_page(self, url):
+        # 静态来源优先走HTTP直连，避免被Chrome的不安全重定向拦截后只剩空壳页面
+        if any(host in url for host in self.STATIC_FETCH_HOSTS):
+            page_source = self._fetch_static_page(url)
+            if page_source and not self._is_blank_page(page_source):
+                return page_source
+            warning(f"静态获取未拿到有效页面，回退浏览器渲染: {url}", "http")
+
         max_retries = 2
         for attempt in range(max_retries):
             try:
@@ -321,7 +374,15 @@ class NewsExtractor:
                 else:
                     time.sleep(10)  # 普通网站的等待时间
                 
-                return self.driver.page_source
+                page_source = self.driver.page_source
+                # 空壳页面交给下游只会解析出0条链接，这里直接重试，最后一次仍为空则返回None让调用方跳过
+                if self._is_blank_page(page_source):
+                    warning(f"页面渲染为空，可能未加载完成或被拦截: {url} (尝试 {attempt + 1}/{max_retries})", "selenium")
+                    if attempt == max_retries - 1:
+                        return None
+                    time.sleep(3)
+                    continue
+                return page_source
             except InvalidSessionIdException:
                 error(f"WebDriver 会话失效，尝试重新连接... (尝试 {attempt + 1}/{max_retries})", "selenium")
                 # 强制重置 driver，下次循环会重新初始化
@@ -382,7 +443,7 @@ class NewsExtractor:
                     return links
             else:
                 warning("未找到class='moe-list'的div标签", "extract")
-                return None
+                return []
         
         # 2. 针对今日头条网站的特殊处理
         elif "toutiao.com" in base_url:
@@ -415,7 +476,7 @@ class NewsExtractor:
                     return unique_links
             else:
                 warning("未找到class='main-l'的div标签", "extract")
-                return None 
+                return []
 
         
         # 3. 针对www.ictdedu.cn/news/网站的特殊处理 
@@ -489,7 +550,7 @@ class NewsExtractor:
                     return unique_links
             else:
                 warning("未找到class='news-list'的div标签", "extract")
-                return None
+                return []
         
         # 5. 针对beijing.gov.cn网站的特殊处理 - 只提取class="listBox"的div下的链接
         elif "beijing.gov.cn" in base_url:
@@ -544,7 +605,7 @@ class NewsExtractor:
                     return unique_links
             else:
                 warning("未找到class='listBox'的div标签", "extract")
-                return None
+                return []
         elif "news.bfsu.edu.cn" in base_url:
             info("北京外国语大学网站特殊处理", "extract")
             soup = BeautifulSoup(page_source, "html.parser")
@@ -574,7 +635,7 @@ class NewsExtractor:
                     return unique_links
             else:                
                 warning("未找到class='page-list'的div标签", "extract")
-                return None   
+                return []
         
         elif "itc.bfsu.edu.cn" in base_url:
             info("北京外国语大学-信息中心网站特殊处理", "extract")
@@ -702,10 +763,36 @@ class NewsExtractor:
             else:
                 warning("未找到class='newlistbox'的div标签", "extract")
                 return None  
-
-
+        elif "www.edu.cn" in base_url:
+            info("中国教育和科研计算机网特殊处理", "extract")
+            soup = BeautifulSoup(page_source, "html.parser")
+            
+            # 查找class="moe-list"的ul标签
+            section2_div = soup.find("div", class_="section2")
+            
+            if section2_div:
+                # 提取该ul下所有a标签的href属性
+                a_tags = section2_div.find_all("a", href=True)
+                
+                for a_tag in a_tags:
+                    href = a_tag["href"]
+                    if href and href not in ["#", "javascript:"]:
                         
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          
+                        # 构建完整URL
+                        full_url = self.make_full_url(base_url, href)
+
+                        links.append(full_url) 
+                        if len(links) > 50:
+                            break
+                
+                if links:
+                    # 去重
+                    unique_links = list(set(links))
+                    info(f"教育科研网提取到 {len(unique_links)} 条链接", "extract")                
+                    return unique_links
+            else:
+                warning("未找到class='moe-list'的ul标签", "extract")
+                return None
         #  通用链接提取逻辑（适用于其他网站或教育部网站未找到moe-list的情况）
         href_pattern = re.compile(r'href=["\'](.*?)["\']')
         all_hrefs = href_pattern.findall(page_source)
@@ -811,6 +898,10 @@ class NewsExtractor:
                     news_data["author"] = ""
                 if news_data["url"].startswith("https://edudigital123.com/article"):
                     news_data["author"] = ""
+            if news_data["url"].startswith("https://www.ictdedu.cn/news") and news_data["title"]:
+                news_data["title"]=news_data["title"].split("—中国教育")[0].strip()
+            elif news_data["url"].startswith("https://www.edu.cn") and news_data["title"]:
+                news_data["title"]=news_data["title"].split("—中国教育")[0].strip()
             if news_data["source"] and not news_data["author"]:
                 news_data["author"] = "source:" + news_data["source"]
                 news_data["source"] = ""
@@ -843,16 +934,29 @@ class NewsExtractor:
         if len(article) < 200:
             return article
         
-        # 使用百度豆包摘要API
-        response = client.chat.completions.create(
-            model="doubao-seed-2-0-pro-260215",  # 模型ID，可在方舟控制台查看
-            messages=[
-                {"role": "system", "content": "你是一个专业的文本摘要助手，用简洁、通顺的中文生成文章摘要，保留核心信息和关键结论，控制在150字左右。"},
-                {"role": "user", "content": f"请为下面的文章生成摘要：\n{article}。不要生成多余内容如字数统计等。"}
-            ],
-            temperature=0.2,  # 越低越稳定、越贴近原文
-            max_tokens=200    # 摘要长度上限
-        )
+        # 使用百度豆包摘要API，带限流重试
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response = client.chat.completions.create(
+                    model="doubao-seed-2-0-pro-260215",  # 模型ID，可在方舟控制台查看
+                    messages=[
+                        {"role": "system", "content": "你是一个专业的文本摘要助手，用简洁、通顺的中文生成文章摘要，保留核心信息和关键结论，控制在150字左右。"},
+                        {"role": "user", "content": f"请为下面的文章生成摘要：\n{article}。不要生成多余内容如字数统计等。"}
+                    ],
+                    temperature=0.2,  # 越低越稳定、越贴近原文
+                    max_tokens=200    # 摘要长度上限
+                )
+                break  # 成功则跳出重试循环
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    wait_time = 5 * (2 ** attempt)  # 5s, 10s, 20s
+                    warning(f"摘要API请求受限({e})，{wait_time}秒后重试({attempt+1}/{max_retries})", "summary")
+                    time.sleep(wait_time)
+                else:
+                    error(f"摘要API重试{max_retries}次仍失败: {e}", "summary")
+                    return ""
+        
         # 输出结果
         summary = response.choices[0].message.content
         if summary:
@@ -965,9 +1069,18 @@ class NewsExtractor:
 
             
             
-            # 发送请求，使用json参数自动处理编码
-            response = requests.post(url, headers=headers, params=params, json=payload, timeout=15)
-            
+            # 发送请求，使用json参数自动处理编码，带限流重试
+            max_retries = 3
+            for attempt in range(max_retries):
+                response = requests.post(url, headers=headers, params=params, json=payload, timeout=15)
+                if response.status_code == 200:
+                    break
+                elif response.status_code == 429 and attempt < max_retries - 1:
+                    wait_time = 5 * (2 ** attempt)  # 5s, 10s, 20s
+                    warning(f"分类API限流(429)，{wait_time}秒后重试({attempt+1}/{max_retries})", "classification")
+                    time.sleep(wait_time)
+                else:
+                    break
             
             # 根据检测到的编码解码
             try:
